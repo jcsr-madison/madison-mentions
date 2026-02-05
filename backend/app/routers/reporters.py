@@ -18,6 +18,9 @@ async def get_reporter_dossier(name: str):
 
     Fetches recent articles, summarizes headlines, analyzes outlet history,
     and detects potential outlet changes.
+
+    Note: Coverage varies by outlet. NewsAPI.ai has good author metadata for
+    WSJ, Bloomberg, and business publications, but limited NYT/WaPo coverage.
     """
     # Validate input
     name = name.strip()
