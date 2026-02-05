@@ -9,7 +9,6 @@ from fastapi import APIRouter, HTTPException
 
 from ..models.schemas import Article, BeatCount, ReporterDossier, SocialLinks
 from ..services.perigon import fetch_reporter_articles as fetch_perigon_articles
-from ..services.newsapi import fetch_reporter_articles as fetch_newsapi_articles
 from ..services.summarizer import summarize_headlines
 from ..services.analyzer import get_outlet_history, detect_outlet_change
 
@@ -90,18 +89,6 @@ def deduplicate_by_headline(articles: list) -> list:
     return unique
 
 
-def deduplicate_by_url(articles: list) -> list:
-    """Remove duplicate articles based on URL."""
-    seen = set()
-    unique = []
-    for article in articles:
-        url = article.get("url", "")
-        if url and url not in seen:
-            seen.add(url)
-            unique.append(article)
-    return unique
-
-
 def get_primary_beats(articles: list) -> List[BeatCount]:
     """Calculate primary beats/topics from all articles."""
     topic_counts = Counter()
@@ -125,8 +112,7 @@ async def get_reporter_dossier(name: str):
     Fetches recent articles, summarizes headlines, analyzes outlet history,
     and detects potential outlet changes.
 
-    Uses Perigon as primary source (230K+ journalists), falls back to
-    NewsAPI.ai for additional coverage.
+    Data source: Perigon (230K+ journalists with social profiles).
     """
     # Validate input
     name = name.strip()
@@ -136,19 +122,11 @@ async def get_reporter_dossier(name: str):
             detail="Reporter name must be at least 2 characters"
         )
 
-    # Fetch articles from Perigon (primary - best journalist coverage)
+    # Fetch articles from Perigon
     articles, social_links_data = await fetch_perigon_articles(name)
 
     # Dedupe syndicated content (same headline across multiple outlets)
     articles = deduplicate_by_headline(articles)
-
-    # If Perigon returns few results, supplement with NewsAPI.ai
-    if len(articles) < 5:
-        newsapi_articles = await fetch_newsapi_articles(name)
-        if newsapi_articles:
-            articles.extend(newsapi_articles)
-            articles = deduplicate_by_url(articles)
-            articles = deduplicate_by_headline(articles)
 
     # Build social links model
     social_links = None
