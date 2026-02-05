@@ -114,11 +114,25 @@ def parse_article(item: dict) -> Optional[dict]:
         domain = source.get("domain", "Unknown")
         outlet = clean_outlet_name(domain)
 
+        # Extract topics (Perigon provides these)
+        topics_raw = item.get("topics", [])
+        categories_raw = item.get("categories", [])
+
+        # Combine topics and categories, dedupe
+        topics = []
+        seen = set()
+        for t in topics_raw + categories_raw:
+            name = t.get("name", "") if isinstance(t, dict) else str(t)
+            if name and name not in seen:
+                topics.append(name)
+                seen.add(name)
+
         return {
             "headline": title,
             "outlet": outlet,
             "date": article_date.isoformat(),
             "url": url,
+            "topics": topics[:5],  # Limit to top 5 topics per article
         }
 
     except (ValueError, KeyError, AttributeError):

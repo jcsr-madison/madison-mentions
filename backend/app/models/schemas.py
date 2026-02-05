@@ -12,11 +12,18 @@ class Article(BaseModel):
     date: date
     url: str
     summary: Optional[str] = None
+    topics: List[str] = []
 
 
 class OutletCount(BaseModel):
     """Outlet with article count."""
     outlet: str
+    count: int
+
+
+class BeatCount(BaseModel):
+    """Topic/beat with article count."""
+    beat: str
     count: int
 
 
@@ -26,5 +33,6 @@ class ReporterDossier(BaseModel):
     query_date: date
     articles: List[Article]
     outlet_history: List[OutletCount]
+    primary_beats: List[BeatCount]
     outlet_change_detected: bool
     outlet_change_note: Optional[str] = None

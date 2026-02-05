@@ -1,10 +1,13 @@
 """Reporter dossier API endpoint."""
 
 import re
+from collections import Counter
 from datetime import date
+from typing import List
+
 from fastapi import APIRouter, HTTPException
 
-from ..models.schemas import Article, ReporterDossier
+from ..models.schemas import Article, BeatCount, ReporterDossier
 from ..services.perigon import fetch_reporter_articles as fetch_perigon_articles
 from ..services.newsapi import fetch_reporter_articles as fetch_newsapi_articles
 from ..services.summarizer import summarize_headlines
@@ -99,6 +102,22 @@ def deduplicate_by_url(articles: list) -> list:
     return unique
 
 
+def get_primary_beats(articles: list) -> List[BeatCount]:
+    """Calculate primary beats/topics from all articles."""
+    topic_counts = Counter()
+
+    for article in articles:
+        topics = article.get("topics", [])
+        for topic in topics:
+            topic_counts[topic] += 1
+
+    # Return top beats sorted by count
+    return [
+        BeatCount(beat=topic, count=count)
+        for topic, count in topic_counts.most_common(10)
+    ]
+
+
 @router.get("/reporter/{name}", response_model=ReporterDossier)
 async def get_reporter_dossier(name: str):
     """Get a comprehensive dossier for a reporter.
@@ -138,6 +157,7 @@ async def get_reporter_dossier(name: str):
             query_date=date.today(),
             articles=[],
             outlet_history=[],
+            primary_beats=[],
             outlet_change_detected=False,
             outlet_change_note=None
         )
@@ -147,6 +167,9 @@ async def get_reporter_dossier(name: str):
 
     # Analyze outlet history
     outlet_history = get_outlet_history(articles)
+
+    # Calculate primary beats from topics
+    primary_beats = get_primary_beats(articles)
 
     # Detect outlet changes
     change_detected, change_note = detect_outlet_change(articles)
@@ -158,7 +181,8 @@ async def get_reporter_dossier(name: str):
             outlet=a["outlet"],
             date=a["date"] if isinstance(a["date"], date) else date.fromisoformat(a["date"]),
             url=a["url"],
-            summary=a.get("summary")
+            summary=a.get("summary"),
+            topics=a.get("topics", [])
         )
         for a in articles
     ]
@@ -171,6 +195,7 @@ async def get_reporter_dossier(name: str):
         query_date=date.today(),
         articles=article_models,
         outlet_history=outlet_history,
+        primary_beats=primary_beats,
         outlet_change_detected=change_detected,
         outlet_change_note=change_note
     )

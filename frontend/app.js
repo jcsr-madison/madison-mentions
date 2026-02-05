@@ -11,9 +11,11 @@ const noResultsSection = document.getElementById('no-results');
 
 // Results elements
 const reporterTitle = document.getElementById('reporter-title');
+const beatsSummary = document.getElementById('beats-summary');
 const queryDate = document.getElementById('query-date');
 const outletChangeAlert = document.getElementById('outlet-change-alert');
 const outletChangeNote = document.getElementById('outlet-change-note');
+const beatBadges = document.getElementById('beat-badges');
 const outletBadges = document.getElementById('outlet-badges');
 const articleCount = document.getElementById('article-count');
 const articlesList = document.getElementById('articles-list');
@@ -63,12 +65,35 @@ function renderDossier(dossier) {
     reporterTitle.textContent = dossier.reporter_name;
     queryDate.textContent = `Queried ${formatDate(dossier.query_date)}`;
 
+    // Beats summary in header
+    if (dossier.primary_beats && dossier.primary_beats.length > 0) {
+        const topBeats = dossier.primary_beats.slice(0, 3).map(b => b.beat);
+        beatsSummary.innerHTML = `<strong>Covers:</strong> ${topBeats.map(b => escapeHtml(b)).join(', ')}`;
+    } else {
+        beatsSummary.innerHTML = '';
+    }
+
     // Outlet change alert
     if (dossier.outlet_change_detected && dossier.outlet_change_note) {
         outletChangeNote.textContent = dossier.outlet_change_note;
         outletChangeAlert.classList.remove('hidden');
     } else {
         outletChangeAlert.classList.add('hidden');
+    }
+
+    // Beat badges
+    if (dossier.primary_beats && dossier.primary_beats.length > 0) {
+        beatBadges.innerHTML = dossier.primary_beats
+            .slice(0, 8)  // Show top 8 beats
+            .map(b => `
+                <div class="beat-badge">
+                    <span class="beat-name">${escapeHtml(b.beat)}</span>
+                    <span class="beat-count">${b.count}</span>
+                </div>
+            `)
+            .join('');
+    } else {
+        beatBadges.innerHTML = '<span class="no-beats">No beat data available</span>';
     }
 
     // Outlet badges
