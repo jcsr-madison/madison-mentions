@@ -75,6 +75,7 @@ async def fetch_articles_by_journalist(
                 "from": from_date,
                 "sortBy": "date",
                 "size": 100,
+                "language": "en",  # English articles only
                 "apiKey": api_key
             },
             timeout=REQUEST_TIMEOUT
