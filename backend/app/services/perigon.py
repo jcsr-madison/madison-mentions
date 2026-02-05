@@ -129,8 +129,12 @@ def clean_outlet_name(domain: str) -> str:
     if not domain:
         return "Unknown"
 
-    # Map common domains to display names
+    # Normalize domain
+    domain = domain.lower().replace("www.", "")
+
+    # Comprehensive domain mapping
     domain_map = {
+        # Major national outlets
         "nytimes.com": "New York Times",
         "wsj.com": "Wall Street Journal",
         "washingtonpost.com": "Washington Post",
@@ -156,6 +160,7 @@ def clean_outlet_name(domain: str) -> str:
         "fortune.com": "Fortune",
         "theguardian.com": "The Guardian",
         "bbc.com": "BBC",
+        "bbc.co.uk": "BBC",
         "economist.com": "The Economist",
         "ft.com": "Financial Times",
         "marketwatch.com": "MarketWatch",
@@ -170,14 +175,149 @@ def clean_outlet_name(domain: str) -> str:
         "thedailybeast.com": "The Daily Beast",
         "huffpost.com": "HuffPost",
         "buzzfeednews.com": "BuzzFeed News",
+        "infobae.com": "Infobae",
+        "nzherald.co.nz": "NZ Herald",
+
+        # McClatchy newspapers
+        "miamiherald.com": "Miami Herald",
+        "sacbee.com": "Sacramento Bee",
+        "charlotteobserver.com": "Charlotte Observer",
+        "kansascity.com": "Kansas City Star",
+        "star-telegram.com": "Fort Worth Star-Telegram",
+        "newsobserver.com": "Raleigh News & Observer",
+        "thestate.com": "The State (SC)",
+        "kentucky.com": "Lexington Herald-Leader",
+        "kansas.com": "Wichita Eagle",
+        "bnd.com": "Belleville News-Democrat",
+        "bradenton.com": "Bradenton Herald",
+        "fresnobee.com": "Fresno Bee",
+        "modbee.com": "Modesto Bee",
+        "sanluisobispo.com": "San Luis Obispo Tribune",
+        "thenewstribune.com": "Tacoma News Tribune",
+        "bellinghamherald.com": "Bellingham Herald",
+        "theolympian.com": "The Olympian",
+        "tri-cityherald.com": "Tri-City Herald",
+        "idahostatesman.com": "Idaho Statesman",
+        "islandpacket.com": "Island Packet",
+        "heraldsun.com": "Durham Herald-Sun",
+        "ledger-enquirer.com": "Columbus Ledger-Enquirer",
+        "macon.com": "Macon Telegraph",
+        "myrtlebeachonline.com": "Myrtle Beach Sun News",
+        "sunherald.com": "Biloxi Sun Herald",
+
+        # Other regional papers
+        "seattletimes.com": "Seattle Times",
+        "sfexaminer.com": "SF Examiner",
+        "spokesman.com": "Spokesman-Review",
+        "denverpost.com": "Denver Post",
+        "dallasnews.com": "Dallas Morning News",
+        "houstonchronicle.com": "Houston Chronicle",
+        "ajc.com": "Atlanta Journal-Constitution",
+        "inquirer.com": "Philadelphia Inquirer",
+        "startribune.com": "Minneapolis Star Tribune",
+        "detroitnews.com": "Detroit News",
+        "freep.com": "Detroit Free Press",
+        "jsonline.com": "Milwaukee Journal Sentinel",
+        "dispatch.com": "Columbus Dispatch",
+        "cleveland.com": "Cleveland Plain Dealer",
+        "baltimoresun.com": "Baltimore Sun",
+        "orlandosentinel.com": "Orlando Sentinel",
+        "tampabay.com": "Tampa Bay Times",
+        "sun-sentinel.com": "South Florida Sun-Sentinel",
+        "azcentral.com": "Arizona Republic",
+        "reviewjournal.com": "Las Vegas Review-Journal",
+        "sltrib.com": "Salt Lake Tribune",
+        "oregonlive.com": "The Oregonian",
+
+        # International
+        "telegraph.co.uk": "The Telegraph",
+        "independent.co.uk": "The Independent",
+        "dailymail.co.uk": "Daily Mail",
+        "mirror.co.uk": "Daily Mirror",
+        "thesun.co.uk": "The Sun",
+        "thetimes.co.uk": "The Times (UK)",
+        "globeandmail.com": "Globe and Mail",
+        "torontosun.com": "Toronto Sun",
+        "smh.com.au": "Sydney Morning Herald",
+        "theaustralian.com.au": "The Australian",
+        "irishtimes.com": "Irish Times",
+        "scmp.com": "South China Morning Post",
+        "japantimes.co.jp": "Japan Times",
+        "straitstimes.com": "Straits Times",
+        "haaretz.com": "Haaretz",
+        "jpost.com": "Jerusalem Post",
+        "aljazeera.com": "Al Jazeera",
+        "dw.com": "Deutsche Welle",
+        "france24.com": "France 24",
+        "lemonde.fr": "Le Monde",
+        "spiegel.de": "Der Spiegel",
+        "elpais.com": "El Pais",
+
+        # Business/Finance
+        "barrons.com": "Barron's",
+        "fool.com": "Motley Fool",
+        "investopedia.com": "Investopedia",
+        "seekingalpha.com": "Seeking Alpha",
+        "thestreet.com": "TheStreet",
+        "finance.yahoo.com": "Yahoo Finance",
+        "money.cnn.com": "CNN Money",
+
+        # Tech
+        "techcrunch.com": "TechCrunch",
+        "theverge.com": "The Verge",
+        "wired.com": "Wired",
+        "arstechnica.com": "Ars Technica",
+        "engadget.com": "Engadget",
+        "cnet.com": "CNET",
+        "zdnet.com": "ZDNet",
+        "gizmodo.com": "Gizmodo",
+        "mashable.com": "Mashable",
+        "recode.net": "Recode",
+        "protocol.com": "Protocol",
+
+        # Sports
+        "espn.com": "ESPN",
+        "sports.yahoo.com": "Yahoo Sports",
+        "cbssports.com": "CBS Sports",
+        "si.com": "Sports Illustrated",
+        "theathletic.com": "The Athletic",
+        "bleacherreport.com": "Bleacher Report",
+
+        # Public radio/TV
+        "wlrn.org": "WLRN",
+        "wnyc.org": "WNYC",
+        "kqed.org": "KQED",
+        "wbur.org": "WBUR",
+        "pbs.org": "PBS",
+
+        # Other
+        "rp.pl": "Rzeczpospolita",
+        "fnlondon.com": "Financial News London",
     }
 
     if domain in domain_map:
         return domain_map[domain]
 
-    # Fallback: clean up domain
-    name = domain.replace("www.", "").split(".")[0]
-    return name.title()
+    # Try partial matching for subdomains
+    for known_domain, name in domain_map.items():
+        if domain.endswith(known_domain):
+            return name
+
+    # Fallback: clean up domain intelligently
+    # Remove TLD and common prefixes
+    name = domain.split(".")[0]
+
+    # Handle cases like "finance.yahoo.com" -> already handled above
+    # For unknown domains, title case and add spaces before caps
+    import re
+    # Add space before capital letters (for camelCase domains)
+    name = re.sub(r'([a-z])([A-Z])', r'\1 \2', name)
+    # Replace hyphens and underscores with spaces
+    name = name.replace("-", " ").replace("_", " ")
+    # Title case
+    name = name.title()
+
+    return name
 
 
 async def fetch_reporter_articles(reporter_name: str) -> List[dict]:
