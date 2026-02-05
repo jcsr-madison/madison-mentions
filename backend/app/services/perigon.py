@@ -32,8 +32,8 @@ async def search_journalist(
     client: httpx.AsyncClient,
     reporter_name: str,
     api_key: str
-) -> Optional[str]:
-    """Search for a journalist by name and return their ID."""
+) -> Optional[dict]:
+    """Search for a journalist by name and return their ID and social links."""
     try:
         response = await client.get(
             f"{PERIGON_BASE_URL}/journalists",
@@ -50,9 +50,34 @@ async def search_journalist(
         if not results:
             return None
 
-        # Return the first matching journalist's ID
-        # Could improve by matching on exact name if multiple results
-        return results[0].get("id")
+        # Get the first matching journalist
+        journalist = results[0]
+        journalist_id = journalist.get("id")
+
+        if not journalist_id:
+            return None
+
+        # Fetch full journalist details for social links
+        detail_response = await client.get(
+            f"{PERIGON_BASE_URL}/journalists/{journalist_id}",
+            params={"apiKey": api_key},
+            timeout=REQUEST_TIMEOUT
+        )
+        detail_response.raise_for_status()
+        details = detail_response.json()
+
+        # Extract social links
+        twitter_handle = details.get("twitterHandle")
+        return {
+            "id": journalist_id,
+            "social_links": {
+                "twitter_handle": twitter_handle,
+                "twitter_url": f"https://twitter.com/{twitter_handle}" if twitter_handle else None,
+                "linkedin_url": details.get("linkedinUrl"),
+                "website_url": details.get("websiteUrl"),
+                "title": details.get("title"),
+            }
+        }
 
     except Exception:
         return None
@@ -335,29 +360,39 @@ def clean_outlet_name(domain: str) -> str:
     return name
 
 
-async def fetch_reporter_articles(reporter_name: str) -> List[dict]:
+async def fetch_reporter_articles(reporter_name: str) -> tuple:
     """Fetch articles by reporter from Perigon, with caching.
 
-    1. Search for journalist by name to get their ID
+    1. Search for journalist by name to get their ID and social links
     2. Fetch articles by that journalist ID
     3. Parse and return results
+
+    Returns:
+        Tuple of (articles: List[dict], social_links: Optional[dict])
     """
     # Check cache first
     cache_key = f"perigon:{reporter_name}"
     cached = get_cached_query(cache_key)
     if cached is not None:
-        return cached
+        # For cached results, we don't have social links cached
+        # Return None for social_links (could improve by caching separately)
+        return cached, None
+
+    social_links = None
 
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
         try:
             api_key = get_api_key()
 
-            # Step 1: Find journalist ID
-            journalist_id = await search_journalist(client, reporter_name, api_key)
-            if not journalist_id:
+            # Step 1: Find journalist ID and social links
+            journalist_data = await search_journalist(client, reporter_name, api_key)
+            if not journalist_data:
                 # No journalist found - cache empty result
                 set_cached_query(cache_key, [])
-                return []
+                return [], None
+
+            journalist_id = journalist_data["id"]
+            social_links = journalist_data.get("social_links")
 
             # Step 2: Fetch their articles
             raw_articles = await fetch_articles_by_journalist(client, journalist_id, api_key)
@@ -365,10 +400,10 @@ async def fetch_reporter_articles(reporter_name: str) -> List[dict]:
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429:
                 # Rate limited
-                return []
+                return [], None
             raise
         except (httpx.RequestError, ValueError):
-            return []
+            return [], None
 
     # Step 3: Parse articles
     articles = []
@@ -383,4 +418,4 @@ async def fetch_reporter_articles(reporter_name: str) -> List[dict]:
     # Cache results
     set_cached_query(cache_key, articles)
 
-    return articles
+    return articles, social_links

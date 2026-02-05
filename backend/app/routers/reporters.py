@@ -7,7 +7,7 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException
 
-from ..models.schemas import Article, BeatCount, ReporterDossier
+from ..models.schemas import Article, BeatCount, ReporterDossier, SocialLinks
 from ..services.perigon import fetch_reporter_articles as fetch_perigon_articles
 from ..services.newsapi import fetch_reporter_articles as fetch_newsapi_articles
 from ..services.summarizer import summarize_headlines
@@ -137,7 +137,7 @@ async def get_reporter_dossier(name: str):
         )
 
     # Fetch articles from Perigon (primary - best journalist coverage)
-    articles = await fetch_perigon_articles(name)
+    articles, social_links_data = await fetch_perigon_articles(name)
 
     # Dedupe syndicated content (same headline across multiple outlets)
     articles = deduplicate_by_headline(articles)
@@ -150,6 +150,17 @@ async def get_reporter_dossier(name: str):
             articles = deduplicate_by_url(articles)
             articles = deduplicate_by_headline(articles)
 
+    # Build social links model
+    social_links = None
+    if social_links_data:
+        social_links = SocialLinks(
+            twitter_handle=social_links_data.get("twitter_handle"),
+            twitter_url=social_links_data.get("twitter_url"),
+            linkedin_url=social_links_data.get("linkedin_url"),
+            website_url=social_links_data.get("website_url"),
+            title=social_links_data.get("title"),
+        )
+
     if not articles:
         # Return empty dossier instead of error
         return ReporterDossier(
@@ -158,6 +169,7 @@ async def get_reporter_dossier(name: str):
             articles=[],
             outlet_history=[],
             primary_beats=[],
+            social_links=social_links,
             outlet_change_detected=False,
             outlet_change_note=None
         )
@@ -196,6 +208,7 @@ async def get_reporter_dossier(name: str):
         articles=article_models,
         outlet_history=outlet_history,
         primary_beats=primary_beats,
+        social_links=social_links,
         outlet_change_detected=change_detected,
         outlet_change_note=change_note
     )

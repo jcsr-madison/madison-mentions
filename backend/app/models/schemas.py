@@ -27,6 +27,15 @@ class BeatCount(BaseModel):
     count: int
 
 
+class SocialLinks(BaseModel):
+    """Social media and professional links for a reporter."""
+    twitter_handle: Optional[str] = None
+    twitter_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    website_url: Optional[str] = None
+    title: Optional[str] = None  # e.g., "Senior Political Correspondent, NYT"
+
+
 class ReporterDossier(BaseModel):
     """Complete dossier for a reporter."""
     reporter_name: str
@@ -34,5 +43,6 @@ class ReporterDossier(BaseModel):
     articles: List[Article]
     outlet_history: List[OutletCount]
     primary_beats: List[BeatCount]
+    social_links: Optional[SocialLinks] = None
     outlet_change_detected: bool
     outlet_change_note: Optional[str] = None

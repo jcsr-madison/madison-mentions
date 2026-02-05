@@ -243,9 +243,49 @@ main {
     margin-bottom: 4px;
 }
 
+.reporter-title-line {
+    font-size: 14px;
+    color: var(--gray-300);
+    margin: 4px 0;
+    font-style: italic;
+}
+
 .query-date {
     font-size: 14px;
     color: var(--gray-400);
+}
+
+/* Social Links */
+.social-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.social-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--navy-800);
+    border: 1px solid var(--navy-600);
+    border-radius: 4px;
+    color: var(--gray-200);
+    text-decoration: none;
+    font-size: 13px;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.social-link:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.social-link svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
 }
 
 /* Beats Summary (inline in header) */
