@@ -23,10 +23,14 @@ def get_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=api_key)
 
 
+MAX_ARTICLES_TO_SUMMARIZE = 20  # Limit to reduce cold-start latency
+
+
 async def summarize_headlines(articles: List[dict]) -> List[dict]:
     """Add summaries to articles using Claude Haiku.
 
     Uses caching to avoid redundant API calls.
+    Only summarizes top 20 articles to keep response times fast.
     """
     if not articles:
         return articles
@@ -42,6 +46,13 @@ async def summarize_headlines(articles: List[dict]) -> List[dict]:
             article["summary"] = cached_summaries[article["url"]]
         else:
             articles_to_summarize.append(article)
+
+    # Limit to top N articles to reduce cold-start latency
+    # Remaining articles use headline as summary
+    if len(articles_to_summarize) > MAX_ARTICLES_TO_SUMMARIZE:
+        for article in articles_to_summarize[MAX_ARTICLES_TO_SUMMARIZE:]:
+            article["summary"] = article["headline"]
+        articles_to_summarize = articles_to_summarize[:MAX_ARTICLES_TO_SUMMARIZE]
 
     if not articles_to_summarize:
         return articles
