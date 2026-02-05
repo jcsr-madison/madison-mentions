@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Madison Mentions - Reporter Intelligence</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Madison Mentions</h1>
+        <p class="subtitle">Reporter Intelligence for PR Professionals</p>
+    </header>
+
+    <main>
+        <section class="search-section">
+            <form id="search-form">
+                <input
+                    type="text"
+                    id="reporter-name"
+                    name="reporter-name"
+                    placeholder="Enter reporter name (e.g., Michael Rapoport)"
+                    autocomplete="off"
+                    required
+                    minlength="2"
+                >
+                <button type="submit" id="search-btn">Search</button>
+            </form>
+        </section>
+
+        <section id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Researching reporter...</p>
+        </section>
+
+        <section id="error" class="error hidden">
+            <p id="error-message"></p>
+        </section>
+
+        <section id="results" class="results hidden">
+            <div class="dossier-header">
+                <h2 id="reporter-title"></h2>
+                <span id="query-date" class="query-date"></span>
+            </div>
+
+            <div id="outlet-change-alert" class="outlet-change-alert hidden">
+                <span class="alert-icon">!</span>
+                <span id="outlet-change-note"></span>
+            </div>
+
+            <div class="outlet-summary">
+                <h3>Outlet History</h3>
+                <div id="outlet-badges" class="outlet-badges"></div>
+            </div>
+
+            <div class="articles-section">
+                <h3>Recent Articles (<span id="article-count">0</span>)</h3>
+                <div id="articles-list" class="articles-list"></div>
+            </div>
+        </section>
+
+        <section id="no-results" class="no-results hidden">
+            <p>No articles found for this reporter.</p>
+            <p class="hint">Try searching for a different name or check the spelling.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>Powered by NewsAPI.ai &amp; Claude</p>
+    </footer>
+
+    <script src="/app.js"></script>
+</body>
+</html>
