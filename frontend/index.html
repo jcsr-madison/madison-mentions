@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madison Mentions - Reporter Intelligence</title>
+    <title>MADISON mentions</title>
     <link rel="stylesheet" href="/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80' font-family='system-ui' font-weight='700'>M</text></svg>">
 </head>
 <body>
     <header>
-        <h1>Madison Mentions</h1>
-        <p class="subtitle">Reporter Intelligence for PR Professionals</p>
+        <a href="/" class="logo">MADISON <span class="underline">mentions</span></a>
     </header>
 
     <main>
@@ -19,7 +19,7 @@
                     type="text"
                     id="reporter-name"
                     name="reporter-name"
-                    placeholder="Enter reporter name (e.g., Michael Rapoport)"
+                    placeholder="Search reporters..."
                     autocomplete="off"
                     required
                     minlength="2"
@@ -38,14 +38,23 @@
         </section>
 
         <section id="results" class="results hidden">
+            <div id="outlet-change-alert" class="outlet-change-alert hidden">
+                <div class="alert-header">
+                    <span class="alert-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </span>
+                    <span class="alert-title">Outlet Change Detected</span>
+                </div>
+                <p id="outlet-change-note" class="alert-message"></p>
+            </div>
+
             <div class="dossier-header">
                 <h2 id="reporter-title"></h2>
                 <span id="query-date" class="query-date"></span>
-            </div>
-
-            <div id="outlet-change-alert" class="outlet-change-alert hidden">
-                <span class="alert-icon">!</span>
-                <span id="outlet-change-note"></span>
             </div>
 
             <div class="outlet-summary">
@@ -61,7 +70,7 @@
 
         <section id="no-results" class="no-results hidden">
             <p>No articles found for this reporter.</p>
-            <p class="hint">Try searching for a different name or check the spelling.</p>
+            <p class="hint">Try a different name or check the spelling.</p>
         </section>
     </main>
 
