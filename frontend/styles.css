@@ -58,14 +58,15 @@ header {
 .logo {
     text-decoration: none;
     color: var(--gold);
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'DM Serif Display', Georgia, serif;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 400;
 }
 
 .logo .underline {
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    text-decoration: none;
+    border-bottom: 2px solid var(--gold);
+    padding-bottom: 2px;
 }
 
 /* ==========================================================================
@@ -98,7 +99,7 @@ main {
     font-family: inherit;
     font-size: 16px;
     background: var(--navy-800);
-    border: 1px solid var(--navy-600);
+    border: 1px solid var(--navy-500);
     border-radius: 4px;
     color: var(--white);
     outline: none;
@@ -234,9 +235,10 @@ main {
 }
 
 .dossier-header h2 {
-    font-size: 32px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 36px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
     color: var(--white);
     margin-bottom: 4px;
 }
@@ -258,6 +260,8 @@ main {
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 16px;
+    border-left: 2px solid var(--gold);
+    padding-left: 12px;
 }
 
 .outlet-badges {
@@ -275,6 +279,12 @@ main {
     border-radius: 4px;
     padding: 8px 14px;
     font-size: 14px;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.outlet-badge:hover {
+    border-color: var(--gold-dark);
+    background: var(--navy-700);
 }
 
 .outlet-badge .outlet-name {
@@ -302,6 +312,8 @@ main {
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 20px;
+    border-left: 2px solid var(--gold);
+    padding-left: 12px;
 }
 
 .articles-list {
@@ -384,19 +396,6 @@ main {
 .no-results .hint {
     font-size: 15px;
     color: var(--gray-400);
-}
-
-/* ==========================================================================
-   FOOTER
-   ========================================================================== */
-
-footer {
-    text-align: center;
-    padding: 32px;
-    color: var(--gray-400);
-    font-size: 13px;
-    border-top: 1px solid var(--navy-700);
-    margin-top: 64px;
 }
 
 /* ==========================================================================
