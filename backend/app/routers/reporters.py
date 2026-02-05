@@ -4,12 +4,25 @@ from datetime import date
 from fastapi import APIRouter, HTTPException
 
 from ..models.schemas import Article, ReporterDossier
-from ..services.newsapi import fetch_reporter_articles
+from ..services.perigon import fetch_reporter_articles as fetch_perigon_articles
+from ..services.newsapi import fetch_reporter_articles as fetch_newsapi_articles
 from ..services.summarizer import summarize_headlines
 from ..services.analyzer import get_outlet_history, detect_outlet_change
 
 
 router = APIRouter(prefix="/api", tags=["reporters"])
+
+
+def deduplicate_by_url(articles: list) -> list:
+    """Remove duplicate articles based on URL."""
+    seen = set()
+    unique = []
+    for article in articles:
+        url = article.get("url", "")
+        if url and url not in seen:
+            seen.add(url)
+            unique.append(article)
+    return unique
 
 
 @router.get("/reporter/{name}", response_model=ReporterDossier)
@@ -19,8 +32,8 @@ async def get_reporter_dossier(name: str):
     Fetches recent articles, summarizes headlines, analyzes outlet history,
     and detects potential outlet changes.
 
-    Note: Coverage varies by outlet. NewsAPI.ai has good author metadata for
-    WSJ, Bloomberg, and business publications, but limited NYT/WaPo coverage.
+    Uses Perigon as primary source (230K+ journalists), falls back to
+    NewsAPI.ai for additional coverage.
     """
     # Validate input
     name = name.strip()
@@ -30,8 +43,16 @@ async def get_reporter_dossier(name: str):
             detail="Reporter name must be at least 2 characters"
         )
 
-    # Fetch articles from NewsAPI.ai
-    articles = await fetch_reporter_articles(name)
+    # Fetch articles from Perigon (primary - best journalist coverage)
+    articles = await fetch_perigon_articles(name)
+
+    # If Perigon returns few results, supplement with NewsAPI.ai
+    if len(articles) < 5:
+        newsapi_articles = await fetch_newsapi_articles(name)
+        if newsapi_articles:
+            articles.extend(newsapi_articles)
+            articles = deduplicate_by_url(articles)
+            articles.sort(key=lambda a: a.get("date", ""), reverse=True)
 
     if not articles:
         # Return empty dossier instead of error
