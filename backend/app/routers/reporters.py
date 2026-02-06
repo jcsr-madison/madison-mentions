@@ -1,16 +1,14 @@
 """Reporter dossier API endpoint."""
 
 import re
-from collections import Counter
 from datetime import date
-from typing import List
 
 from fastapi import APIRouter, HTTPException
 
-from ..models.schemas import Article, BeatCount, ReporterDossier, SocialLinks
+from ..models.schemas import Article, ReporterDossier, SocialLinks
 from ..services.perigon import fetch_reporter_articles as fetch_perigon_articles
-from ..services.summarizer import summarize_headlines
-from ..services.analyzer import get_outlet_history, detect_outlet_change
+from ..services.summarizer import summarize_headlines, generate_reporter_profile
+from ..services.analyzer import detect_outlet_change
 
 
 router = APIRouter(prefix="/api", tags=["reporters"])
@@ -89,21 +87,6 @@ def deduplicate_by_headline(articles: list) -> list:
     return unique
 
 
-def get_primary_beats(articles: list) -> List[BeatCount]:
-    """Calculate primary beats/topics from all articles."""
-    topic_counts = Counter()
-
-    for article in articles:
-        topics = article.get("topics", [])
-        for topic in topics:
-            topic_counts[topic] += 1
-
-    # Return top beats sorted by count
-    return [
-        BeatCount(beat=topic, count=count)
-        for topic, count in topic_counts.most_common(10)
-    ]
-
 
 @router.get("/reporter/{name}", response_model=ReporterDossier)
 async def get_reporter_dossier(name: str):
@@ -145,8 +128,6 @@ async def get_reporter_dossier(name: str):
             reporter_name=name,
             query_date=date.today(),
             articles=[],
-            outlet_history=[],
-            primary_beats=[],
             social_links=social_links,
             outlet_change_detected=False,
             outlet_change_note=None
@@ -155,11 +136,9 @@ async def get_reporter_dossier(name: str):
     # Add summaries to articles
     articles = await summarize_headlines(articles)
 
-    # Analyze outlet history
-    outlet_history = get_outlet_history(articles)
-
-    # Calculate primary beats from topics
-    primary_beats = get_primary_beats(articles)
+    # Generate reporter profile (current outlet + bio)
+    social_title = social_links_data.get("title") if social_links_data else None
+    current_outlet, reporter_bio = generate_reporter_profile(name, articles, social_title)
 
     # Detect outlet changes
     change_detected, change_note = detect_outlet_change(articles)
@@ -184,8 +163,8 @@ async def get_reporter_dossier(name: str):
         reporter_name=name,
         query_date=date.today(),
         articles=article_models,
-        outlet_history=outlet_history,
-        primary_beats=primary_beats,
+        current_outlet=current_outlet,
+        reporter_bio=reporter_bio,
         social_links=social_links,
         outlet_change_detected=change_detected,
         outlet_change_note=change_note

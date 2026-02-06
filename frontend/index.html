@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=7">
+    <link rel="stylesheet" href="/styles.css?v=8">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230d1321' width='100' height='100' rx='12'/><text x='50' y='72' font-size='60' font-family='Georgia,serif' font-weight='400' fill='%23d4a84b' text-anchor='middle'>M</text></svg>">
 </head>
 <body>
@@ -57,20 +57,14 @@
 
             <div class="dossier-header">
                 <h2 id="reporter-title"></h2>
+                <p id="current-outlet" class="current-outlet"></p>
                 <p id="reporter-title-line" class="reporter-title-line"></p>
-                <p id="beats-summary" class="beats-summary"></p>
                 <div id="social-links" class="social-links"></div>
                 <span id="query-date" class="query-date"></span>
             </div>
 
-            <div class="beats-section">
-                <h3>Primary Beats</h3>
-                <div id="beat-badges" class="beat-badges"></div>
-            </div>
-
-            <div class="outlet-summary">
-                <h3>Outlet History</h3>
-                <div id="outlet-badges" class="outlet-badges"></div>
+            <div class="bio-section">
+                <p id="reporter-bio" class="reporter-bio"></p>
             </div>
 
             <div class="articles-section">
@@ -85,6 +79,6 @@
         </section>
     </main>
 
-    <script src="/app.js?v=7"></script>
+    <script src="/app.js?v=8"></script>
 </body>
 </html>

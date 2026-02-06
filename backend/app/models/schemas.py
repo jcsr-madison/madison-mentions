@@ -15,17 +15,6 @@ class Article(BaseModel):
     topics: List[str] = []
 
 
-class OutletCount(BaseModel):
-    """Outlet with article count."""
-    outlet: str
-    count: int
-
-
-class BeatCount(BaseModel):
-    """Topic/beat with article count."""
-    beat: str
-    count: int
-
 
 class SocialLinks(BaseModel):
     """Social media and professional links for a reporter."""
@@ -41,8 +30,8 @@ class ReporterDossier(BaseModel):
     reporter_name: str
     query_date: date
     articles: List[Article]
-    outlet_history: List[OutletCount]
-    primary_beats: List[BeatCount]
+    current_outlet: Optional[str] = None
+    reporter_bio: Optional[str] = None
     social_links: Optional[SocialLinks] = None
     outlet_change_detected: bool
     outlet_change_note: Optional[str] = None

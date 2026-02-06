@@ -12,14 +12,13 @@ const loadingMessage = document.getElementById('loading-message');
 
 // Results elements
 const reporterTitle = document.getElementById('reporter-title');
+const currentOutlet = document.getElementById('current-outlet');
 const reporterTitleLine = document.getElementById('reporter-title-line');
-const beatsSummary = document.getElementById('beats-summary');
+const reporterBio = document.getElementById('reporter-bio');
 const socialLinks = document.getElementById('social-links');
 const queryDate = document.getElementById('query-date');
 const outletChangeAlert = document.getElementById('outlet-change-alert');
 const outletChangeNote = document.getElementById('outlet-change-note');
-const beatBadges = document.getElementById('beat-badges');
-const outletBadges = document.getElementById('outlet-badges');
 const articleCount = document.getElementById('article-count');
 const articlesList = document.getElementById('articles-list');
 
@@ -69,19 +68,18 @@ function renderDossier(dossier) {
     reporterTitle.textContent = dossier.reporter_name;
     queryDate.textContent = `Queried ${formatDate(dossier.query_date)}`;
 
-    // Reporter title/role
+    // Current outlet
+    if (dossier.current_outlet) {
+        currentOutlet.textContent = `Reporter at ${dossier.current_outlet}`;
+    } else {
+        currentOutlet.textContent = '';
+    }
+
+    // Reporter title/role from Perigon
     if (dossier.social_links && dossier.social_links.title) {
         reporterTitleLine.textContent = dossier.social_links.title;
     } else {
         reporterTitleLine.textContent = '';
-    }
-
-    // Beats summary in header
-    if (dossier.primary_beats && dossier.primary_beats.length > 0) {
-        const topBeats = dossier.primary_beats.slice(0, 3).map(b => b.beat);
-        beatsSummary.innerHTML = `<strong>Covers:</strong> ${topBeats.map(b => escapeHtml(b)).join(', ')}`;
-    } else {
-        beatsSummary.innerHTML = '';
     }
 
     // Social links
@@ -95,30 +93,12 @@ function renderDossier(dossier) {
         outletChangeAlert.classList.add('hidden');
     }
 
-    // Beat badges
-    if (dossier.primary_beats && dossier.primary_beats.length > 0) {
-        beatBadges.innerHTML = dossier.primary_beats
-            .slice(0, 8)  // Show top 8 beats
-            .map(b => `
-                <div class="beat-badge">
-                    <span class="beat-name">${escapeHtml(b.beat)}</span>
-                    <span class="beat-count">${b.count}</span>
-                </div>
-            `)
-            .join('');
+    // Reporter bio
+    if (dossier.reporter_bio) {
+        reporterBio.textContent = dossier.reporter_bio;
     } else {
-        beatBadges.innerHTML = '<span class="no-beats">No beat data available</span>';
+        reporterBio.textContent = '';
     }
-
-    // Outlet badges
-    outletBadges.innerHTML = dossier.outlet_history
-        .map(oh => `
-            <div class="outlet-badge">
-                <span class="outlet-name">${escapeHtml(oh.outlet)}</span>
-                <span class="outlet-count">${oh.count}</span>
-            </div>
-        `)
-        .join('');
 
     // Article count
     articleCount.textContent = dossier.articles.length;

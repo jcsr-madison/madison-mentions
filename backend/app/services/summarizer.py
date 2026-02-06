@@ -1,12 +1,13 @@
 """Claude Haiku summarization service for article headlines."""
 
+import json
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 import anthropic
 from dotenv import load_dotenv
 
-from ..db.cache import get_cached_summaries_bulk, set_cached_summaries_bulk
+from ..db.cache import get_cached_summaries_bulk, set_cached_summaries_bulk, get_cached_summary, set_cached_summary
 
 
 load_dotenv()
@@ -24,6 +25,88 @@ def get_client() -> anthropic.Anthropic:
 
 
 MAX_ARTICLES_TO_SUMMARIZE = 20  # Limit to reduce cold-start latency
+
+
+def generate_reporter_profile(
+    reporter_name: str,
+    articles: List[dict],
+    social_links_title: Optional[str] = None,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Generate a reporter's current outlet and prose bio using Claude Haiku.
+
+    Returns (current_outlet, reporter_bio).
+    """
+    if not articles:
+        return None, None
+
+    # Check cache first
+    cache_key = f"profile:{reporter_name.lower()}"
+    cached = get_cached_summary(cache_key)
+    if cached:
+        try:
+            data = json.loads(cached)
+            return data.get("current_outlet"), data.get("reporter_bio")
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+    # Build article data for the prompt (limit to 30 most recent)
+    article_lines = []
+    for a in articles[:30]:
+        line = f"- \"{a.get('headline', '')}\" | {a.get('outlet', '')} | {a.get('date', '')}"
+        topics = a.get("topics", [])
+        if topics:
+            line += f" | Topics: {', '.join(topics)}"
+        article_lines.append(line)
+    articles_text = "\n".join(article_lines)
+
+    title_hint = ""
+    if social_links_title:
+        title_hint = f"\nKnown title/role: {social_links_title}"
+
+    prompt = f"""You are analyzing a journalist's recent article history for a PR professional.
+
+Reporter: {reporter_name}{title_hint}
+
+Recent articles:
+{articles_text}
+
+Based on this data, provide two things:
+
+1. CURRENT OUTLET: Determine the reporter's current primary outlet. Account for syndication — if the same articles appear across multiple papers in the same network (e.g., McClatchy, Gannett), identify the reporter's home paper, not every syndication partner. Give just the outlet name.
+
+2. BIO: Write a 2-3 sentence mini-bio describing what this reporter covers. Write it as prose suitable for a PR professional audience. Do not use bullet points or lists. Focus on their beat, coverage areas, and any notable patterns.
+
+Respond in this exact JSON format:
+{{"current_outlet": "Outlet Name", "reporter_bio": "Two to three sentences about the reporter."}}"""
+
+    try:
+        client = get_client()
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        response_text = response.content[0].text.strip()
+
+        # Parse JSON from response (handle markdown code blocks)
+        if response_text.startswith("```"):
+            response_text = response_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+
+        data = json.loads(response_text)
+        current_outlet = data.get("current_outlet")
+        reporter_bio = data.get("reporter_bio")
+
+        # Cache the result
+        set_cached_summary(cache_key, json.dumps(data))
+
+        return current_outlet, reporter_bio
+
+    except (anthropic.APIError, json.JSONDecodeError, ValueError, KeyError):
+        # Fallback: use most common outlet from recent articles
+        from collections import Counter
+        outlet_counts = Counter(a.get("outlet", "") for a in articles)
+        fallback_outlet = outlet_counts.most_common(1)[0][0] if outlet_counts else None
+        return fallback_outlet, None
 
 
 async def summarize_headlines(articles: List[dict]) -> List[dict]:

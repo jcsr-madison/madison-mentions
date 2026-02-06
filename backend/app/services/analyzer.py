@@ -4,18 +4,6 @@ from collections import Counter
 from datetime import date, timedelta
 from typing import List, Optional, Tuple
 
-from ..models.schemas import OutletCount
-
-
-def get_outlet_history(articles: List[dict]) -> List[OutletCount]:
-    """Count articles per outlet, sorted by frequency."""
-    outlet_counts = Counter(a["outlet"] for a in articles)
-
-    return [
-        OutletCount(outlet=outlet, count=count)
-        for outlet, count in outlet_counts.most_common()
-    ]
-
 
 def most_common_outlet(articles: List[dict]) -> Optional[str]:
     """Get the most common outlet from a list of articles."""
