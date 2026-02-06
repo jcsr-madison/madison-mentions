@@ -127,8 +127,15 @@ def parse_article(item: dict) -> Optional[dict]:
         pub_date = item.get("pubDate", "")
         if pub_date:
             try:
-                # Perigon format: 2026-01-03T07:02:07+00:00
-                article_date = datetime.fromisoformat(pub_date.replace("+00:00", "")).date()
+                # Handle various ISO 8601 formats
+                # Replace Z with +00:00, then strip timezone for parsing
+                normalized = pub_date.replace("Z", "+00:00")
+                # Remove timezone offset for fromisoformat compatibility
+                if "+" in normalized:
+                    normalized = normalized.rsplit("+", 1)[0]
+                elif normalized.count("-") > 2:  # Has negative timezone
+                    normalized = normalized.rsplit("-", 1)[0]
+                article_date = datetime.fromisoformat(normalized).date()
             except ValueError:
                 return None
         else:
@@ -393,11 +400,17 @@ async def fetch_reporter_articles(reporter_name: str) -> tuple:
     cache_key = f"perigon:{reporter_name}"
     cached = get_cached_query(cache_key)
     if cached is not None:
-        # Extract social_links from cached data if present
+        # Extract social_links from cached data if present (use get, not pop, to avoid mutation)
         cached_social = None
         if cached and isinstance(cached, list) and len(cached) > 0:
             # Social links stored in first item's _social_links field
-            cached_social = cached[0].pop("_social_links", None) if "_social_links" in cached[0] else None
+            cached_social = cached[0].get("_social_links")
+            # Return copy of articles without the _social_links field
+            if cached_social:
+                articles = [{k: v for k, v in cached[0].items() if k != "_social_links"}] + cached[1:]
+            else:
+                articles = cached
+            return articles, cached_social
         return cached, cached_social
 
     social_links = None
