@@ -7,14 +7,8 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException
 
-from ..models.schemas import (
-    Article, BeatCount, ReporterDossier, SocialLinks,
-    JournalistSummary, JournalistSearchResponse
-)
-from ..services.perigon import (
-    fetch_reporter_articles as fetch_perigon_articles,
-    search_journalists_by_topic
-)
+from ..models.schemas import Article, BeatCount, ReporterDossier, SocialLinks
+from ..services.perigon import fetch_reporter_articles as fetch_perigon_articles
 from ..services.summarizer import summarize_headlines
 from ..services.analyzer import get_outlet_history, detect_outlet_change
 
@@ -195,53 +189,4 @@ async def get_reporter_dossier(name: str):
         social_links=social_links,
         outlet_change_detected=change_detected,
         outlet_change_note=change_note
-    )
-
-
-@router.get("/journalists/search", response_model=JournalistSearchResponse)
-async def search_journalists(topic: str, limit: int = 20):
-    """Search for journalists covering a specific topic/beat.
-
-    Find reporters who cover a particular beat like Politics, Technology,
-    Finance, etc. Returns journalists with their outlets and social links.
-
-    Args:
-        topic: The topic/beat to search for (e.g., "Politics", "Technology")
-        limit: Maximum number of results (default 20, max 50)
-    """
-    # Validate input
-    topic = topic.strip()
-    if not topic or len(topic) < 2:
-        raise HTTPException(
-            status_code=400,
-            detail="Topic must be at least 2 characters"
-        )
-
-    # Validate and cap limit (1-50)
-    if limit < 1:
-        limit = 20
-    limit = min(limit, 50)
-
-    # Search journalists by topic
-    journalists_data = await search_journalists_by_topic(topic, size=limit)
-
-    # Convert to models
-    journalists = [
-        JournalistSummary(
-            name=j["name"],
-            title=j.get("title"),
-            outlets=j.get("outlets", []),
-            twitter_handle=j.get("twitter_handle"),
-            twitter_url=j.get("twitter_url"),
-            linkedin_url=j.get("linkedin_url"),
-            article_count=j.get("article_count", 0),
-        )
-        for j in journalists_data
-    ]
-
-    return JournalistSearchResponse(
-        topic=topic,
-        query_date=date.today(),
-        total_results=len(journalists),
-        journalists=journalists
     )
