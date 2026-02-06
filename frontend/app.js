@@ -8,6 +8,18 @@ const errorSection = document.getElementById('error');
 const errorMessage = document.getElementById('error-message');
 const resultsSection = document.getElementById('results');
 const noResultsSection = document.getElementById('no-results');
+const loadingMessage = document.getElementById('loading-message');
+
+// Beat search elements
+const beatResultsSection = document.getElementById('beat-results');
+const noBeatResultsSection = document.getElementById('no-beat-results');
+const beatTopic = document.getElementById('beat-topic');
+const beatCount = document.getElementById('beat-count');
+const journalistsList = document.getElementById('journalists-list');
+const tabBtns = document.querySelectorAll('.tab-btn');
+
+// Search mode: 'reporter' or 'beat'
+let searchMode = 'reporter';
 
 // Results elements
 const reporterTitle = document.getElementById('reporter-title');
@@ -28,15 +40,39 @@ function showSection(section) {
     errorSection.classList.add('hidden');
     resultsSection.classList.add('hidden');
     noResultsSection.classList.add('hidden');
+    beatResultsSection.classList.add('hidden');
+    noBeatResultsSection.classList.add('hidden');
 
     if (section) {
         section.classList.remove('hidden');
     }
 }
 
+// Tab switching
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        searchMode = btn.dataset.mode;
+
+        // Update placeholder
+        if (searchMode === 'beat') {
+            input.placeholder = 'Search by topic (e.g., Politics, Technology)...';
+        } else {
+            input.placeholder = 'Search reporters...';
+        }
+
+        // Clear results
+        showSection(null);
+    });
+});
+
 function setLoading(isLoading) {
     searchBtn.disabled = isLoading;
     if (isLoading) {
+        loadingMessage.textContent = searchMode === 'beat'
+            ? 'Finding journalists...'
+            : 'Researching reporter...';
         showSection(loadingSection);
     }
 }
@@ -126,7 +162,7 @@ function renderDossier(dossier) {
         .map(article => `
             <article class="article-card">
                 <div class="article-header">
-                    <a href="${escapeHtml(article.url)}"
+                    <a href="${sanitizeUrl(article.url)}"
                        target="_blank"
                        rel="noopener noreferrer"
                        class="article-headline">
@@ -153,6 +189,16 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+// URL sanitization - only allow http/https
+function sanitizeUrl(url) {
+    if (!url) return '#';
+    const trimmed = url.trim().toLowerCase();
+    if (trimmed.startsWith('https://') || trimmed.startsWith('http://')) {
+        return url;
+    }
+    return '#';
+}
+
 // SVG icons for social links
 const socialIcons = {
     twitter: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
@@ -168,7 +214,7 @@ function renderSocialLinks(links, reporterName) {
         // Twitter/X
         if (links.twitter_url) {
             linksHtml.push(`
-                <a href="${escapeHtml(links.twitter_url)}" target="_blank" rel="noopener noreferrer" class="social-link">
+                <a href="${sanitizeUrl(links.twitter_url)}" target="_blank" rel="noopener noreferrer" class="social-link">
                     ${socialIcons.twitter}
                     <span>@${escapeHtml(links.twitter_handle)}</span>
                 </a>
@@ -178,7 +224,7 @@ function renderSocialLinks(links, reporterName) {
         // LinkedIn
         if (links.linkedin_url) {
             linksHtml.push(`
-                <a href="${escapeHtml(links.linkedin_url)}" target="_blank" rel="noopener noreferrer" class="social-link">
+                <a href="${sanitizeUrl(links.linkedin_url)}" target="_blank" rel="noopener noreferrer" class="social-link">
                     ${socialIcons.linkedin}
                     <span>LinkedIn</span>
                 </a>
@@ -211,7 +257,7 @@ function renderSocialLinks(links, reporterName) {
     socialLinks.innerHTML = linksHtml.join('');
 }
 
-// API call
+// API call - Reporter search
 async function searchReporter(name) {
     const encodedName = encodeURIComponent(name.trim());
     const response = await fetch(`/api/reporter/${encodedName}`);
@@ -224,23 +270,108 @@ async function searchReporter(name) {
     return response.json();
 }
 
+// API call - Beat/topic search
+async function searchByBeat(topic) {
+    const encodedTopic = encodeURIComponent(topic.trim());
+    const response = await fetch(`/api/journalists/search?topic=${encodedTopic}&limit=20`);
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || `Error: ${response.status}`);
+    }
+
+    return response.json();
+}
+
+// Render journalist search results
+function renderJournalistResults(data) {
+    if (!data.journalists || data.journalists.length === 0) {
+        showSection(noBeatResultsSection);
+        return;
+    }
+
+    beatTopic.textContent = data.topic;
+    beatCount.textContent = `${data.total_results} journalists found`;
+
+    journalistsList.innerHTML = data.journalists.map(j => `
+        <div class="journalist-card">
+            <div class="journalist-header">
+                <span class="journalist-name">${escapeHtml(j.name)}</span>
+                ${j.title ? `<span class="journalist-title">${escapeHtml(j.title)}</span>` : ''}
+            </div>
+            ${j.outlets && j.outlets.length > 0 ? `
+                <div class="journalist-outlets">
+                    ${j.outlets.map(o => `<span class="outlet-tag">${escapeHtml(o)}</span>`).join('')}
+                </div>
+            ` : ''}
+            <div class="journalist-links">
+                ${j.twitter_url ? `
+                    <a href="${sanitizeUrl(j.twitter_url)}" target="_blank" rel="noopener noreferrer" class="social-link small">
+                        ${socialIcons.twitter}
+                        <span>@${escapeHtml(j.twitter_handle)}</span>
+                    </a>
+                ` : ''}
+                ${j.linkedin_url ? `
+                    <a href="${sanitizeUrl(j.linkedin_url)}" target="_blank" rel="noopener noreferrer" class="social-link small">
+                        ${socialIcons.linkedin}
+                        <span>LinkedIn</span>
+                    </a>
+                ` : ''}
+                <button class="view-dossier-btn" data-reporter="${escapeHtml(j.name)}">View Dossier</button>
+            </div>
+            ${j.article_count > 0 ? `<span class="article-count-badge">${j.article_count} articles</span>` : ''}
+        </div>
+    `).join('');
+
+    showSection(beatResultsSection);
+}
+
+// Switch to reporter view from beat search
+function viewDossier(name) {
+    // Switch to reporter mode
+    tabBtns.forEach(b => b.classList.remove('active'));
+    tabBtns[0].classList.add('active');
+    searchMode = 'reporter';
+    input.placeholder = 'Search reporters...';
+    input.value = name;
+    form.dispatchEvent(new Event('submit'));
+}
+
+// Event delegation for View Dossier buttons
+journalistsList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.view-dossier-btn');
+    if (btn) {
+        const reporterName = btn.dataset.reporter;
+        if (reporterName) {
+            viewDossier(reporterName);
+        }
+    }
+});
+
 // Form submission
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const name = input.value.trim();
-    if (!name || name.length < 2) {
-        showError('Please enter a reporter name (at least 2 characters)');
+    const query = input.value.trim();
+    if (!query || query.length < 2) {
+        showError(searchMode === 'beat'
+            ? 'Please enter a topic (at least 2 characters)'
+            : 'Please enter a reporter name (at least 2 characters)');
         return;
     }
 
     setLoading(true);
 
     try {
-        const dossier = await searchReporter(name);
-        renderDossier(dossier);
+        if (searchMode === 'beat') {
+            const results = await searchByBeat(query);
+            renderJournalistResults(results);
+        } else {
+            const dossier = await searchReporter(query);
+            renderDossier(dossier);
+        }
     } catch (err) {
-        showError(err.message || 'Failed to fetch reporter data. Please try again.');
+        showError(err.message || 'Failed to fetch data. Please try again.');
     } finally {
         setLoading(false);
     }

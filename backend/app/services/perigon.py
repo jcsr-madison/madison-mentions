@@ -246,6 +246,7 @@ def clean_outlet_name(domain: str) -> str:
         "sunherald.com": "Biloxi Sun Herald",
 
         # Other regional papers
+        "adn.com": "Anchorage Daily News",
         "seattletimes.com": "Seattle Times",
         "sfexaminer.com": "SF Examiner",
         "spokesman.com": "Spokesman-Review",
@@ -330,6 +331,10 @@ def clean_outlet_name(domain: str) -> str:
         "wbur.org": "WBUR",
         "pbs.org": "PBS",
 
+        # Legal/Business news
+        "bloomberglaw.com": "Bloomberg Law",
+        "law.com": "Law.com",
+
         # Other
         "rp.pl": "Rzeczpospolita",
         "fnlondon.com": "Financial News London",
@@ -344,12 +349,26 @@ def clean_outlet_name(domain: str) -> str:
             return name
 
     # Fallback: clean up domain intelligently
-    # Remove TLD and common prefixes
-    name = domain.split(".")[0]
-
-    # Handle cases like "finance.yahoo.com" -> already handled above
-    # For unknown domains, title case and add spaces before caps
     import re
+
+    # Split domain into parts
+    parts = domain.split(".")
+
+    # Skip common subdomain prefixes
+    skip_prefixes = {"www", "news", "api", "m", "mobile", "amp", "cdn", "static"}
+    name_parts = [p for p in parts if p.lower() not in skip_prefixes]
+
+    # Take the main domain name (usually first meaningful part)
+    if name_parts:
+        # Remove TLD (.com, .org, .co.uk, etc.)
+        if len(name_parts) > 1 and name_parts[-1] in {"com", "org", "net", "edu", "gov", "co", "uk", "io", "ai"}:
+            name_parts = name_parts[:-1]
+        if len(name_parts) > 1 and name_parts[-1] in {"co"}:
+            name_parts = name_parts[:-1]
+        name = name_parts[0] if name_parts else domain.split(".")[0]
+    else:
+        name = domain.split(".")[0]
+
     # Add space before capital letters (for camelCase domains)
     name = re.sub(r'([a-z])([A-Z])', r'\1 \2', name)
     # Replace hyphens and underscores with spaces
@@ -358,6 +377,76 @@ def clean_outlet_name(domain: str) -> str:
     name = name.title()
 
     return name
+
+
+async def search_journalists_by_topic(topic: str, size: int = 20) -> List[dict]:
+    """Search for journalists covering a specific topic/category.
+
+    Args:
+        topic: The topic/category to search for (e.g., "Politics", "Technology")
+        size: Maximum number of results to return
+
+    Returns:
+        List of journalist data with name, title, outlets, and social links
+    """
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        try:
+            api_key = get_api_key()
+
+            # Search journalists by category/topic
+            response = await client.get(
+                f"{PERIGON_BASE_URL}/journalists",
+                params={
+                    "q": topic,  # Search in name, title, description
+                    "size": size,
+                    "apiKey": api_key
+                },
+                timeout=REQUEST_TIMEOUT
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            results = data.get("results", [])
+            journalists = []
+
+            for j in results:
+                # Extract outlets from topSources
+                top_sources = j.get("topSources", [])
+                outlets = []
+                for src in top_sources[:3]:  # Top 3 outlets
+                    source_name = src.get("name", "")
+                    if source_name:
+                        # Clean up domain to readable name
+                        outlets.append(clean_outlet_name(source_name))
+
+                twitter_handle = j.get("twitterHandle")
+
+                # Sum article counts from topSources
+                total_articles = sum(src.get("count", 0) for src in top_sources)
+
+                journalists.append({
+                    "name": j.get("name", "Unknown"),
+                    "title": j.get("title"),
+                    "outlets": outlets,
+                    "twitter_handle": twitter_handle,
+                    "twitter_url": f"https://twitter.com/{twitter_handle}" if twitter_handle else None,
+                    "linkedin_url": j.get("linkedinUrl"),
+                    "article_count": total_articles,
+                })
+
+            # Sort by article count (most active first), filter out 0-article journalists
+            journalists = [j for j in journalists if j["article_count"] > 0]
+            journalists.sort(key=lambda x: x["article_count"], reverse=True)
+
+            return journalists
+
+        except httpx.HTTPStatusError as e:
+            # Return empty for rate limit or bad request (invalid query)
+            if e.response.status_code in (400, 429):
+                return []
+            raise
+        except (httpx.RequestError, ValueError):
+            return []
 
 
 async def fetch_reporter_articles(reporter_name: str) -> tuple:
@@ -374,9 +463,12 @@ async def fetch_reporter_articles(reporter_name: str) -> tuple:
     cache_key = f"perigon:{reporter_name}"
     cached = get_cached_query(cache_key)
     if cached is not None:
-        # For cached results, we don't have social links cached
-        # Return None for social_links (could improve by caching separately)
-        return cached, None
+        # Extract social_links from cached data if present
+        cached_social = None
+        if cached and isinstance(cached, list) and len(cached) > 0:
+            # Social links stored in first item's _social_links field
+            cached_social = cached[0].pop("_social_links", None) if "_social_links" in cached[0] else None
+        return cached, cached_social
 
     social_links = None
 
@@ -415,7 +507,10 @@ async def fetch_reporter_articles(reporter_name: str) -> tuple:
     # Sort by date descending
     articles.sort(key=lambda a: a.get("date", ""), reverse=True)
 
-    # Cache results
-    set_cached_query(cache_key, articles)
+    # Cache results (embed social_links in first article for retrieval)
+    articles_to_cache = articles.copy()
+    if articles_to_cache and social_links:
+        articles_to_cache[0] = {**articles_to_cache[0], "_social_links": social_links}
+    set_cached_query(cache_key, articles_to_cache)
 
     return articles, social_links

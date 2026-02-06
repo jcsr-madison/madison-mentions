@@ -46,3 +46,22 @@ class ReporterDossier(BaseModel):
     social_links: Optional[SocialLinks] = None
     outlet_change_detected: bool
     outlet_change_note: Optional[str] = None
+
+
+class JournalistSummary(BaseModel):
+    """Summary of a journalist for search results."""
+    name: str
+    title: Optional[str] = None
+    outlets: List[str] = []
+    twitter_handle: Optional[str] = None
+    twitter_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    article_count: int = 0
+
+
+class JournalistSearchResponse(BaseModel):
+    """Response for journalist search by topic."""
+    topic: str
+    query_date: date
+    total_results: int
+    journalists: List[JournalistSummary]

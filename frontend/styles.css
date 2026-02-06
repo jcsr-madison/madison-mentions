@@ -87,6 +87,47 @@ main {
     margin-bottom: 48px;
 }
 
+/* Search Tabs */
+.search-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    max-width: 600px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px 20px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--navy-800);
+    border: 1px solid var(--navy-600);
+    color: var(--gray-300);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.tab-btn:first-child {
+    border-radius: 4px 0 0 4px;
+    border-right: none;
+}
+
+.tab-btn:last-child {
+    border-radius: 0 4px 4px 0;
+}
+
+.tab-btn:hover {
+    background: var(--navy-700);
+    color: var(--gray-100);
+}
+
+.tab-btn.active {
+    background: var(--gold);
+    color: var(--navy-900);
+    border-color: var(--gold);
+}
+
 #search-form {
     display: flex;
     gap: 12px;
@@ -498,6 +539,136 @@ main {
 }
 
 /* ==========================================================================
+   BEAT SEARCH RESULTS
+   ========================================================================== */
+
+.beat-results {
+    animation: fadeIn 0.3s ease;
+}
+
+.beat-results-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--navy-700);
+}
+
+.beat-results-header h2 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--white);
+}
+
+.beat-results-header h2 span {
+    color: var(--gold);
+}
+
+.beat-result-count {
+    font-size: 14px;
+    color: var(--gray-400);
+}
+
+.journalists-list {
+    display: grid;
+    gap: 16px;
+}
+
+.journalist-card {
+    background: var(--navy-800);
+    border: 1px solid var(--navy-600);
+    border-radius: 6px;
+    padding: 20px;
+    position: relative;
+    transition: border-color 0.2s;
+}
+
+.journalist-card:hover {
+    border-color: var(--navy-500);
+}
+
+.journalist-header {
+    margin-bottom: 10px;
+}
+
+.journalist-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--white);
+    display: block;
+}
+
+.journalist-title {
+    font-size: 14px;
+    color: var(--gray-300);
+    font-style: italic;
+}
+
+.journalist-outlets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.outlet-tag {
+    font-size: 12px;
+    padding: 4px 10px;
+    background: var(--navy-700);
+    border-radius: 3px;
+    color: var(--gray-200);
+}
+
+.journalist-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.social-link.small {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.social-link.small svg {
+    width: 14px;
+    height: 14px;
+}
+
+.view-dossier-btn {
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    background: transparent;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.view-dossier-btn:hover {
+    background: var(--gold);
+    color: var(--navy-900);
+}
+
+.article-count-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 12px;
+    padding: 4px 10px;
+    background: var(--gold-muted);
+    border: 1px solid var(--gold-dark);
+    border-radius: 3px;
+    color: var(--gold-light);
+}
+
+/* ==========================================================================
    UTILITIES
    ========================================================================== */
 
@@ -514,12 +685,17 @@ main {
         padding: 20px 24px;
     }
 
-    .product-badge {
-        display: none;
-    }
-
     main {
         padding: 40px 24px;
+    }
+
+    .search-tabs {
+        max-width: 100%;
+    }
+
+    .tab-btn {
+        padding: 10px 12px;
+        font-size: 13px;
     }
 
     #search-form {
@@ -530,8 +706,14 @@ main {
         width: 100%;
     }
 
-    .dossier-header h2 {
-        font-size: 26px;
+    .dossier-header h2,
+    .beat-results-header h2 {
+        font-size: 24px;
+    }
+
+    .beat-results-header {
+        flex-direction: column;
+        gap: 8px;
     }
 
     .article-header {
@@ -541,5 +723,21 @@ main {
 
     .article-meta {
         order: -1;
+    }
+
+    .journalist-card {
+        padding: 16px;
+    }
+
+    .journalist-links {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .article-count-badge {
+        position: static;
+        margin-top: 12px;
+        display: inline-block;
     }
 }

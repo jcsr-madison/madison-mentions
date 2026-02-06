@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=2">
+    <link rel="stylesheet" href="/styles.css?v=6">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230d1321' width='100' height='100' rx='12'/><text x='50' y='72' font-size='60' font-family='Georgia,serif' font-weight='400' fill='%23d4a84b' text-anchor='middle'>M</text></svg>">
 </head>
 <body>
@@ -17,6 +17,10 @@
 
     <main>
         <section class="search-section">
+            <div class="search-tabs">
+                <button type="button" class="tab-btn active" data-mode="reporter">Find Reporter</button>
+                <button type="button" class="tab-btn" data-mode="beat">Find by Beat</button>
+            </div>
             <form id="search-form">
                 <input
                     type="text"
@@ -33,7 +37,7 @@
 
         <section id="loading" class="loading hidden">
             <div class="spinner"></div>
-            <p>Researching reporter...</p>
+            <p id="loading-message">Researching reporter...</p>
         </section>
 
         <section id="error" class="error hidden">
@@ -83,8 +87,21 @@
             <p>No articles found for this reporter.</p>
             <p class="hint">Try a different name or check the spelling.</p>
         </section>
+
+        <section id="beat-results" class="beat-results hidden">
+            <div class="beat-results-header">
+                <h2>Journalists covering <span id="beat-topic"></span></h2>
+                <span id="beat-count" class="beat-result-count"></span>
+            </div>
+            <div id="journalists-list" class="journalists-list"></div>
+        </section>
+
+        <section id="no-beat-results" class="no-results hidden">
+            <p>No journalists found covering this topic.</p>
+            <p class="hint">Try a broader topic like "Politics", "Technology", or "Finance".</p>
+        </section>
     </main>
 
-    <script src="/app.js?v=2"></script>
+    <script src="/app.js?v=6"></script>
 </body>
 </html>
