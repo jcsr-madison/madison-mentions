@@ -49,10 +49,17 @@ def init_db():
             current_outlet TEXT,
             reporter_bio TEXT,
             social_links_json TEXT,
+            source TEXT DEFAULT 'perigon',
             last_updated TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # Migration: add source column to existing databases
+    try:
+        cursor.execute("ALTER TABLE reporters ADD COLUMN source TEXT DEFAULT 'perigon'")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
 
     # Articles linked to reporters
     cursor.execute("""

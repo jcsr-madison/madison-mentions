@@ -180,6 +180,7 @@ async def confirm_import(request: ConfirmRequest):
                 social_links=social_links if social_links else None,
                 current_outlet=outlet or None,
                 bio=bio or None,
+                source="csv_import",
             )
             imported += 1
 

@@ -78,6 +78,7 @@ def upsert_reporter(
     social_links: Optional[Dict] = None,
     current_outlet: Optional[str] = None,
     bio: Optional[str] = None,
+    source: Optional[str] = None,
 ) -> int:
     """Insert or update a reporter record. Returns the reporter id."""
     conn = get_connection()
@@ -87,16 +88,17 @@ def upsert_reporter(
 
     cursor.execute(
         """
-        INSERT INTO reporters (name, perigon_journalist_id, social_links_json, current_outlet, reporter_bio, last_updated)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO reporters (name, perigon_journalist_id, social_links_json, current_outlet, reporter_bio, source, last_updated)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(name) DO UPDATE SET
             perigon_journalist_id = COALESCE(excluded.perigon_journalist_id, perigon_journalist_id),
             social_links_json = COALESCE(excluded.social_links_json, social_links_json),
             current_outlet = COALESCE(excluded.current_outlet, current_outlet),
             reporter_bio = COALESCE(excluded.reporter_bio, reporter_bio),
+            source = COALESCE(excluded.source, source),
             last_updated = excluded.last_updated
         """,
-        (name.strip().lower(), perigon_id, social_json, current_outlet, bio, now),
+        (name.strip().lower(), perigon_id, social_json, current_outlet, bio, source, now),
     )
     reporter_id = cursor.lastrowid
 

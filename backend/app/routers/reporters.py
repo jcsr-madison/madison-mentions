@@ -271,6 +271,7 @@ async def get_reporter_dossier(name: str, refresh: bool = False):
             name=name,
             perigon_id=journalist_id,
             social_links=social_links_data,
+            source="perigon",
         )
         return ReporterDossier(
             reporter_name=name,
@@ -295,6 +296,7 @@ async def get_reporter_dossier(name: str, refresh: bool = False):
         social_links=social_links_data,
         current_outlet=current_outlet,
         bio=reporter_bio,
+        source="perigon",
     )
     insert_articles(reporter_id, articles)
 
