@@ -404,6 +404,44 @@ main {
     color: var(--gray-400);
 }
 
+/* Last Updated + Refresh */
+.last-updated {
+    font-size: 13px;
+    color: var(--gray-400);
+    margin-left: 8px;
+}
+
+.refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    margin-left: 12px;
+    background: transparent;
+    color: var(--gray-300);
+    border: 1px solid var(--navy-600);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    vertical-align: middle;
+}
+
+.refresh-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.refresh-btn svg {
+    flex-shrink: 0;
+}
+
 /* ==========================================================================
    UTILITIES
    ========================================================================== */

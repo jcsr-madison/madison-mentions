@@ -1,12 +1,23 @@
-"""Reporter dossier API endpoint."""
+"""Reporter dossier API endpoint with cache-first architecture."""
 
+import json
 import re
-from datetime import date
+from datetime import date, datetime, timedelta
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 
+from ..db.reporter_store import (
+    get_reporter,
+    is_reporter_fresh,
+    get_reporter_articles,
+    get_latest_article_date,
+    upsert_reporter,
+    insert_articles,
+    update_reporter_profile,
+)
 from ..models.schemas import Article, ReporterDossier, SocialLinks
-from ..services.perigon import fetch_reporter_articles as fetch_perigon_articles
+from ..services.perigon import search_and_get_journalist, fetch_articles_since
 from ..services.summarizer import summarize_headlines, generate_reporter_profile
 from ..services.analyzer import detect_outlet_change
 
@@ -40,23 +51,15 @@ OUTLET_PRIORITY = {
 
 def normalize_headline(headline: str) -> str:
     """Normalize headline for comparison."""
-    # Lowercase
     h = headline.lower()
-    # Remove punctuation and extra whitespace
     h = re.sub(r'[^\w\s]', '', h)
     h = re.sub(r'\s+', ' ', h).strip()
-    # Remove common prefixes like "Live Updates:"
     h = re.sub(r'^(live updates?|breaking|update)\s*:?\s*', '', h)
     return h
 
 
 def deduplicate_by_headline(articles: list) -> list:
-    """Remove duplicate syndicated articles, keeping the primary outlet version.
-
-    Many articles are syndicated across McClatchy papers and other networks.
-    This keeps only one version, preferring major outlets over regional ones.
-    """
-    # Group by normalized headline
+    """Remove duplicate syndicated articles, keeping the primary outlet version."""
     headline_groups = {}
     for article in articles:
         key = normalize_headline(article.get("headline", ""))
@@ -66,13 +69,11 @@ def deduplicate_by_headline(articles: list) -> list:
             headline_groups[key] = []
         headline_groups[key].append(article)
 
-    # For each group, keep the article from the highest-priority outlet
     unique = []
     for key, group in headline_groups.items():
         if len(group) == 1:
             unique.append(group[0])
         else:
-            # Sort by outlet priority (highest first), then by date (newest first)
             group.sort(
                 key=lambda a: (
                     OUTLET_PRIORITY.get(a.get("outlet", ""), 0),
@@ -82,22 +83,91 @@ def deduplicate_by_headline(articles: list) -> list:
             )
             unique.append(group[0])
 
-    # Sort by date descending
     unique.sort(key=lambda a: a.get("date", ""), reverse=True)
     return unique
 
 
+def build_dossier_from_db(reporter: dict) -> ReporterDossier:
+    """Build a ReporterDossier from a stored reporter record and its articles."""
+    reporter_id = reporter["id"]
+    db_articles = get_reporter_articles(reporter_id)
+
+    # Convert DB rows to dicts suitable for detect_outlet_change
+    articles_for_analysis = [
+        {
+            "headline": a["headline"],
+            "outlet": a["outlet"],
+            "date": a["date"],
+            "url": a["url"],
+            "summary": a.get("summary"),
+            "topics": a.get("topics", []),
+        }
+        for a in db_articles
+    ]
+
+    # Parse social links
+    social_links = None
+    social_links_json = reporter.get("social_links_json")
+    if social_links_json:
+        try:
+            sl = json.loads(social_links_json)
+            social_links = SocialLinks(
+                twitter_handle=sl.get("twitter_handle"),
+                twitter_url=sl.get("twitter_url"),
+                linkedin_url=sl.get("linkedin_url"),
+                website_url=sl.get("website_url"),
+                title=sl.get("title"),
+            )
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Detect outlet changes
+    change_detected, change_note = detect_outlet_change(articles_for_analysis)
+
+    # Parse last_updated
+    last_updated = None
+    if reporter.get("last_updated"):
+        try:
+            last_updated = datetime.fromisoformat(reporter["last_updated"])
+        except (ValueError, TypeError):
+            pass
+
+    # Build article models
+    article_models = [
+        Article(
+            headline=a["headline"],
+            outlet=a["outlet"],
+            date=a["date"] if isinstance(a["date"], date) else date.fromisoformat(a["date"]),
+            url=a["url"],
+            summary=a.get("summary"),
+            topics=a.get("topics", []),
+        )
+        for a in articles_for_analysis
+    ]
+    article_models.sort(key=lambda a: a.date, reverse=True)
+
+    return ReporterDossier(
+        reporter_name=reporter["name"].title(),
+        query_date=date.today(),
+        articles=article_models,
+        current_outlet=reporter.get("current_outlet"),
+        reporter_bio=reporter.get("reporter_bio"),
+        social_links=social_links,
+        outlet_change_detected=change_detected,
+        outlet_change_note=change_note,
+        last_updated=last_updated,
+    )
+
 
 @router.get("/reporter/{name}", response_model=ReporterDossier)
-async def get_reporter_dossier(name: str):
+async def get_reporter_dossier(name: str, refresh: bool = False):
     """Get a comprehensive dossier for a reporter.
 
-    Fetches recent articles, summarizes headlines, analyzes outlet history,
-    and detects potential outlet changes.
-
-    Data source: Perigon (230K+ journalists with social profiles).
+    3-tier cache-first architecture:
+    - Tier 2: Fresh DB hit — returns instantly, no API calls
+    - Tier 3: Stale or forced refresh — incremental update from Perigon
+    - Tier 1: Cold start — full fetch from Perigon, stores everything
     """
-    # Validate input
     name = name.strip()
     if not name or len(name) < 2:
         raise HTTPException(
@@ -105,13 +175,71 @@ async def get_reporter_dossier(name: str):
             detail="Reporter name must be at least 2 characters"
         )
 
-    # Fetch articles from Perigon
-    articles, social_links_data = await fetch_perigon_articles(name)
+    reporter = get_reporter(name)
 
-    # Dedupe syndicated content (same headline across multiple outlets)
-    articles = deduplicate_by_headline(articles)
+    # --- Tier 2: Fresh DB hit ---
+    if reporter and is_reporter_fresh(reporter) and not refresh:
+        db_articles = get_reporter_articles(reporter["id"])
+        if db_articles:
+            return build_dossier_from_db(reporter)
 
-    # Build social links model
+    # --- Tier 3: Stale or forced refresh (incremental) ---
+    if reporter and reporter.get("perigon_journalist_id"):
+        journalist_id = reporter["perigon_journalist_id"]
+        reporter_id = reporter["id"]
+
+        # Determine incremental fetch boundary
+        latest_date = get_latest_article_date(reporter_id)
+        since_date = None
+        if latest_date:
+            next_day = (date.fromisoformat(latest_date) + timedelta(days=1)).isoformat()
+            since_date = next_day
+
+        # Fetch only new articles from Perigon
+        new_articles = await fetch_articles_since(journalist_id, since_date)
+        new_articles = deduplicate_by_headline(new_articles)
+
+        if new_articles:
+            # Summarize only the new articles
+            new_articles = await summarize_headlines(new_articles)
+            insert_articles(reporter_id, new_articles)
+
+        # Regenerate profile with ALL articles (old + new)
+        all_db_articles = get_reporter_articles(reporter_id)
+        all_articles_dicts = [
+            {
+                "headline": a["headline"],
+                "outlet": a["outlet"],
+                "date": a["date"],
+                "url": a["url"],
+                "summary": a.get("summary"),
+                "topics": a.get("topics", []),
+            }
+            for a in all_db_articles
+        ]
+
+        # Get social title for profile generation
+        social_title = None
+        if reporter.get("social_links_json"):
+            try:
+                sl = json.loads(reporter["social_links_json"])
+                social_title = sl.get("title")
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        current_outlet, reporter_bio = generate_reporter_profile(
+            name, all_articles_dicts, social_title
+        )
+        update_reporter_profile(reporter_id, current_outlet, reporter_bio)
+
+        # Re-fetch the updated reporter record
+        reporter = get_reporter(name)
+        return build_dossier_from_db(reporter)
+
+    # --- Tier 1: Cold start (no record) ---
+    journalist_data = await search_and_get_journalist(name)
+
+    social_links_data = journalist_data.get("social_links") if journalist_data else None
     social_links = None
     if social_links_data:
         social_links = SocialLinks(
@@ -122,50 +250,54 @@ async def get_reporter_dossier(name: str):
             title=social_links_data.get("title"),
         )
 
-    if not articles:
-        # Return empty dossier instead of error
+    if not journalist_data:
         return ReporterDossier(
             reporter_name=name,
             query_date=date.today(),
             articles=[],
             social_links=social_links,
             outlet_change_detected=False,
-            outlet_change_note=None
+            outlet_change_note=None,
         )
 
-    # Add summaries to articles
+    journalist_id = journalist_data["id"]
+
+    # Full 365-day fetch
+    articles = await fetch_articles_since(journalist_id)
+    articles = deduplicate_by_headline(articles)
+
+    if not articles:
+        upsert_reporter(
+            name=name,
+            perigon_id=journalist_id,
+            social_links=social_links_data,
+        )
+        return ReporterDossier(
+            reporter_name=name,
+            query_date=date.today(),
+            articles=[],
+            social_links=social_links,
+            outlet_change_detected=False,
+            outlet_change_note=None,
+        )
+
+    # Summarize all articles
     articles = await summarize_headlines(articles)
 
-    # Generate reporter profile (current outlet + bio)
+    # Generate profile
     social_title = social_links_data.get("title") if social_links_data else None
     current_outlet, reporter_bio = generate_reporter_profile(name, articles, social_title)
 
-    # Detect outlet changes
-    change_detected, change_note = detect_outlet_change(articles)
-
-    # Convert to Article models
-    article_models = [
-        Article(
-            headline=a["headline"],
-            outlet=a["outlet"],
-            date=a["date"] if isinstance(a["date"], date) else date.fromisoformat(a["date"]),
-            url=a["url"],
-            summary=a.get("summary"),
-            topics=a.get("topics", [])
-        )
-        for a in articles
-    ]
-
-    # Sort by date descending
-    article_models.sort(key=lambda a: a.date, reverse=True)
-
-    return ReporterDossier(
-        reporter_name=name,
-        query_date=date.today(),
-        articles=article_models,
+    # Store reporter and articles
+    reporter_id = upsert_reporter(
+        name=name,
+        perigon_id=journalist_id,
+        social_links=social_links_data,
         current_outlet=current_outlet,
-        reporter_bio=reporter_bio,
-        social_links=social_links,
-        outlet_change_detected=change_detected,
-        outlet_change_note=change_note
+        bio=reporter_bio,
     )
+    insert_articles(reporter_id, articles)
+
+    # Return from DB for consistency
+    reporter = get_reporter(name)
+    return build_dossier_from_db(reporter)

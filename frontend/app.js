@@ -17,10 +17,15 @@ const reporterTitleLine = document.getElementById('reporter-title-line');
 const reporterBio = document.getElementById('reporter-bio');
 const socialLinks = document.getElementById('social-links');
 const queryDate = document.getElementById('query-date');
+const lastUpdated = document.getElementById('last-updated');
+const refreshBtn = document.getElementById('refresh-btn');
 const outletChangeAlert = document.getElementById('outlet-change-alert');
 const outletChangeNote = document.getElementById('outlet-change-note');
 const articleCount = document.getElementById('article-count');
 const articlesList = document.getElementById('articles-list');
+
+// State
+let currentReporterName = null;
 
 // State management
 function showSection(section) {
@@ -28,6 +33,7 @@ function showSection(section) {
     errorSection.classList.add('hidden');
     resultsSection.classList.add('hidden');
     noResultsSection.classList.add('hidden');
+    refreshBtn.classList.add('hidden');
 
     if (section) {
         section.classList.remove('hidden');
@@ -36,6 +42,7 @@ function showSection(section) {
 
 function setLoading(isLoading) {
     searchBtn.disabled = isLoading;
+    refreshBtn.disabled = isLoading;
     if (isLoading) {
         loadingMessage.textContent = 'Researching reporter...';
         showSection(loadingSection);
@@ -57,6 +64,25 @@ function formatDate(dateStr) {
     });
 }
 
+// Format a timestamp to relative time like "Updated 3 days ago"
+function formatTimeAgo(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHr / 24);
+
+    if (diffSec < 60) return 'Updated just now';
+    if (diffMin < 60) return `Updated ${diffMin}m ago`;
+    if (diffHr < 24) return `Updated ${diffHr}h ago`;
+    if (diffDays === 1) return 'Updated 1 day ago';
+    if (diffDays < 30) return `Updated ${diffDays} days ago`;
+    return `Updated ${formatDate(isoString.split('T')[0])}`;
+}
+
 // Render the dossier
 function renderDossier(dossier) {
     if (!dossier.articles || dossier.articles.length === 0) {
@@ -66,7 +92,15 @@ function renderDossier(dossier) {
 
     // Header
     reporterTitle.textContent = dossier.reporter_name;
-    queryDate.textContent = `Queried ${formatDate(dossier.query_date)}`;
+
+    // Show last_updated instead of query date
+    if (dossier.last_updated) {
+        lastUpdated.textContent = formatTimeAgo(dossier.last_updated);
+        queryDate.textContent = '';
+    } else {
+        queryDate.textContent = `Queried ${formatDate(dossier.query_date)}`;
+        lastUpdated.textContent = '';
+    }
 
     // Current outlet
     if (dossier.current_outlet) {
@@ -125,6 +159,10 @@ function renderDossier(dossier) {
         .join('');
 
     showSection(resultsSection);
+
+    // Show refresh button
+    refreshBtn.classList.remove('hidden');
+    refreshBtn.disabled = false;
 }
 
 // HTML escaping for security
@@ -204,9 +242,13 @@ function renderSocialLinks(links, reporterName) {
 }
 
 // API call
-async function searchReporter(name) {
+async function searchReporter(name, refresh = false) {
     const encodedName = encodeURIComponent(name.trim());
-    const response = await fetch(`/api/reporter/${encodedName}`);
+    let url = `/api/reporter/${encodedName}`;
+    if (refresh) {
+        url += '?refresh=true';
+    }
+    const response = await fetch(url);
 
     if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -215,6 +257,23 @@ async function searchReporter(name) {
 
     return response.json();
 }
+
+// Refresh button handler
+refreshBtn.addEventListener('click', async () => {
+    if (!currentReporterName) return;
+
+    refreshBtn.disabled = true;
+    setLoading(true);
+
+    try {
+        const dossier = await searchReporter(currentReporterName, true);
+        renderDossier(dossier);
+    } catch (err) {
+        showError(err.message || 'Failed to refresh reporter data. Please try again.');
+    } finally {
+        setLoading(false);
+    }
+});
 
 // Form submission
 form.addEventListener('submit', async (e) => {
@@ -226,6 +285,7 @@ form.addEventListener('submit', async (e) => {
         return;
     }
 
+    currentReporterName = name;
     setLoading(true);
 
     try {

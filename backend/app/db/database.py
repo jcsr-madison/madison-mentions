@@ -40,6 +40,41 @@ def init_db():
         )
     """)
 
+    # Reporter profiles (cache-first architecture)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reporters (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            perigon_journalist_id TEXT,
+            current_outlet TEXT,
+            reporter_bio TEXT,
+            social_links_json TEXT,
+            last_updated TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Articles linked to reporters
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reporter_id INTEGER NOT NULL,
+            headline TEXT,
+            outlet TEXT,
+            date TEXT,
+            url TEXT UNIQUE,
+            summary TEXT,
+            topics_json TEXT DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (reporter_id) REFERENCES reporters(id)
+        )
+    """)
+
+    # Indexes for fast lookups
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_reporters_name ON reporters(name)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_articles_reporter_id ON articles(reporter_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_articles_reporter_date ON articles(reporter_id, date)")
+
     conn.commit()
     conn.close()
 

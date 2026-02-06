@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple
 import anthropic
 from dotenv import load_dotenv
 
-from ..db.cache import get_cached_summaries_bulk, set_cached_summaries_bulk, get_cached_summary, set_cached_summary
+from ..db.cache import get_cached_summaries_bulk, set_cached_summaries_bulk
 
 
 load_dotenv()
@@ -38,16 +38,6 @@ def generate_reporter_profile(
     """
     if not articles:
         return None, None
-
-    # Check cache first
-    cache_key = f"profile:{reporter_name.lower()}"
-    cached = get_cached_summary(cache_key)
-    if cached:
-        try:
-            data = json.loads(cached)
-            return data.get("current_outlet"), data.get("reporter_bio")
-        except (json.JSONDecodeError, AttributeError):
-            pass
 
     # Build article data for the prompt (limit to 30 most recent)
     article_lines = []
@@ -95,9 +85,6 @@ Respond in this exact JSON format:
         data = json.loads(response_text)
         current_outlet = data.get("current_outlet")
         reporter_bio = data.get("reporter_bio")
-
-        # Cache the result
-        set_cached_summary(cache_key, json.dumps(data))
 
         return current_outlet, reporter_bio
 

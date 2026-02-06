@@ -1,6 +1,6 @@
 """Pydantic models for Madison Mentions API."""
 
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -35,3 +35,4 @@ class ReporterDossier(BaseModel):
     social_links: Optional[SocialLinks] = None
     outlet_change_detected: bool
     outlet_change_note: Optional[str] = None
+    last_updated: Optional[datetime] = None

@@ -11,9 +11,6 @@ from typing import List, Optional
 import httpx
 from dotenv import load_dotenv
 
-from ..db.cache import get_cached_query, set_cached_query
-
-
 load_dotenv()
 
 PERIGON_BASE_URL = "https://api.goperigon.com/v1"
@@ -86,12 +83,12 @@ async def search_journalist(
 async def fetch_articles_by_journalist(
     client: httpx.AsyncClient,
     journalist_id: str,
-    api_key: str
+    api_key: str,
+    from_date_override: Optional[str] = None,
 ) -> List[dict]:
     """Fetch recent articles by a journalist ID."""
     try:
-        # Get articles from the last 12 months
-        from_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+        from_date = from_date_override or (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
         response = await client.get(
             f"{PERIGON_BASE_URL}/all",
@@ -386,74 +383,32 @@ def clean_outlet_name(domain: str) -> str:
     return name
 
 
-async def fetch_reporter_articles(reporter_name: str) -> tuple:
-    """Fetch articles by reporter from Perigon, with caching.
-
-    1. Search for journalist by name to get their ID and social links
-    2. Fetch articles by that journalist ID
-    3. Parse and return results
-
-    Returns:
-        Tuple of (articles: List[dict], social_links: Optional[dict])
-    """
-    # Check cache first
-    cache_key = f"perigon:{reporter_name}"
-    cached = get_cached_query(cache_key)
-    if cached is not None:
-        # Extract social_links from cached data if present (use get, not pop, to avoid mutation)
-        cached_social = None
-        if cached and isinstance(cached, list) and len(cached) > 0:
-            # Social links stored in first item's _social_links field
-            cached_social = cached[0].get("_social_links")
-            # Return copy of articles without the _social_links field
-            if cached_social:
-                articles = [{k: v for k, v in cached[0].items() if k != "_social_links"}] + cached[1:]
-            else:
-                articles = cached
-            return articles, cached_social
-        return cached, cached_social
-
-    social_links = None
-
+async def search_and_get_journalist(name: str) -> Optional[dict]:
+    """Search for a journalist by name. Returns {id, social_links} or None."""
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        try:
-            api_key = get_api_key()
+        api_key = get_api_key()
+        return await search_journalist(client, name, api_key)
 
-            # Step 1: Find journalist ID and social links
-            journalist_data = await search_journalist(client, reporter_name, api_key)
-            if not journalist_data:
-                # No journalist found - cache empty result
-                set_cached_query(cache_key, [])
-                return [], None
 
-            journalist_id = journalist_data["id"]
-            social_links = journalist_data.get("social_links")
+async def fetch_articles_since(
+    journalist_id: str,
+    since_date: Optional[str] = None,
+) -> List[dict]:
+    """Fetch articles for a journalist, optionally since a given date.
 
-            # Step 2: Fetch their articles
-            raw_articles = await fetch_articles_by_journalist(client, journalist_id, api_key)
+    Returns parsed article dicts sorted by date descending.
+    """
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        api_key = get_api_key()
+        raw_articles = await fetch_articles_by_journalist(
+            client, journalist_id, api_key, from_date_override=since_date
+        )
 
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                # Rate limited
-                return [], None
-            raise
-        except (httpx.RequestError, ValueError):
-            return [], None
-
-    # Step 3: Parse articles
     articles = []
     for item in raw_articles:
         parsed = parse_article(item)
         if parsed:
             articles.append(parsed)
 
-    # Sort by date descending
     articles.sort(key=lambda a: a.get("date", ""), reverse=True)
-
-    # Cache results (embed social_links in first article for retrieval)
-    articles_to_cache = articles.copy()
-    if articles_to_cache and social_links:
-        articles_to_cache[0] = {**articles_to_cache[0], "_social_links": social_links}
-    set_cached_query(cache_key, articles_to_cache)
-
-    return articles, social_links
+    return articles
