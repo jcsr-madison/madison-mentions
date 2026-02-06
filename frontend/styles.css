@@ -443,6 +443,335 @@ main {
 }
 
 /* ==========================================================================
+   CSV IMPORT
+   ========================================================================== */
+
+.import-nav-btn {
+    padding: 8px 20px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    background: transparent;
+    color: var(--gray-200);
+    border: 1px solid var(--navy-600);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.import-nav-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.import-section {
+    animation: fadeIn 0.3s ease;
+}
+
+.import-title {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--white);
+    margin-bottom: 8px;
+}
+
+.import-subtitle {
+    font-size: 15px;
+    color: var(--gray-300);
+    margin-bottom: 24px;
+}
+
+.csv-upload-btn {
+    padding: 14px 28px;
+    font-family: inherit;
+    font-size: 15px;
+    background: var(--navy-800);
+    color: var(--gray-200);
+    border: 2px dashed var(--navy-600);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.csv-upload-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.csv-filename {
+    font-size: 14px;
+    color: var(--gray-300);
+    margin-left: 12px;
+}
+
+.csv-analyze-btn {
+    display: block;
+    margin-top: 20px;
+    padding: 14px 28px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    background: var(--gold);
+    color: var(--navy-900);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.csv-analyze-btn:hover:not(:disabled) {
+    background: var(--gold-light);
+}
+
+.csv-analyze-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.import-summary {
+    background: var(--navy-800);
+    padding: 20px 24px;
+    border-radius: 4px;
+    margin-bottom: 24px;
+    font-size: 15px;
+    color: var(--gray-200);
+    line-height: 1.7;
+}
+
+.import-summary strong {
+    color: var(--white);
+}
+
+.import-confidence {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+.import-confidence.high {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+}
+
+.import-confidence.medium {
+    background: var(--amber-light);
+    color: var(--amber);
+}
+
+.import-confidence.low {
+    background: var(--error-light);
+    color: var(--error);
+}
+
+.import-section-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+    border-left: 2px solid var(--gold);
+    padding-left: 12px;
+}
+
+.import-mappings {
+    margin-bottom: 24px;
+}
+
+.mapping-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 10px;
+}
+
+.mapping-label {
+    width: 100px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-200);
+    text-transform: capitalize;
+}
+
+.mapping-select {
+    flex: 1;
+    max-width: 300px;
+    padding: 10px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--navy-800);
+    color: var(--white);
+    border: 1px solid var(--navy-600);
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.mapping-select:focus {
+    border-color: var(--gold);
+}
+
+.import-issues {
+    margin-bottom: 24px;
+}
+
+.import-issues li {
+    list-style: none;
+    background: var(--amber-light);
+    border-left: 4px solid var(--amber);
+    padding: 10px 16px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--gray-200);
+}
+
+.import-duplicates {
+    margin-bottom: 24px;
+}
+
+.import-duplicates li {
+    list-style: none;
+    background: var(--gold-muted);
+    border-left: 4px solid var(--gold);
+    padding: 10px 16px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--gray-200);
+}
+
+.import-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 24px;
+}
+
+.import-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.import-table th {
+    background: var(--navy-800);
+    color: var(--gray-300);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 11px;
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.import-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--navy-700);
+    color: var(--gray-200);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.import-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 20px;
+    border-top: 1px solid var(--navy-700);
+}
+
+.import-skip-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--gray-300);
+    cursor: pointer;
+}
+
+.import-skip-label input[type="checkbox"] {
+    accent-color: var(--gold);
+}
+
+.import-action-btns {
+    display: flex;
+    gap: 12px;
+}
+
+.import-cancel-btn,
+.import-done-btn {
+    padding: 10px 24px;
+    font-family: inherit;
+    font-size: 14px;
+    background: transparent;
+    color: var(--gray-300);
+    border: 1px solid var(--navy-600);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.import-cancel-btn:hover,
+.import-done-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.import-confirm-btn {
+    padding: 10px 24px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--gold);
+    color: var(--navy-900);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.import-confirm-btn:hover {
+    background: var(--gold-light);
+}
+
+.import-confirm-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.import-result-stats {
+    display: flex;
+    gap: 32px;
+    margin: 24px 0;
+}
+
+.result-stat {
+    text-align: center;
+}
+
+.result-stat .result-count {
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--white);
+    display: block;
+}
+
+.result-stat .result-label {
+    font-size: 13px;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.result-stat.result-errors .result-count {
+    color: var(--error);
+}
+
+/* ==========================================================================
    UTILITIES
    ========================================================================== */
 

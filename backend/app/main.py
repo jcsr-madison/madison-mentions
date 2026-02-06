@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from .routers import reporters
+from .routers import reporters, csv_import
 
 
 app = FastAPI(
@@ -19,6 +19,7 @@ app = FastAPI(
 
 # Include API routes
 app.include_router(reporters.router)
+app.include_router(csv_import.router)
 
 # Serve frontend static files
 frontend_path = Path(__file__).parent.parent.parent / "frontend"

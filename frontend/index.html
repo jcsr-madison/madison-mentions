@@ -7,12 +7,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=9">
+    <link rel="stylesheet" href="/styles.css?v=10">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230d1321' width='100' height='100' rx='12'/><text x='50' y='72' font-size='60' font-family='Georgia,serif' font-weight='400' fill='%23d4a84b' text-anchor='middle'>M</text></svg>">
 </head>
 <body>
     <header>
         <a href="/" class="logo">MADISON <span class="underline">mentions.</span></a>
+        <button id="import-nav-btn" class="import-nav-btn">Import CSV</button>
     </header>
 
     <main>
@@ -82,8 +83,50 @@
             <p>No articles found for this reporter.</p>
             <p class="hint">Try a different name or check the spelling.</p>
         </section>
+
+        <section id="import-upload" class="import-section hidden">
+            <h2 class="import-title">Import Reporters</h2>
+            <p class="import-subtitle">Upload a CSV file with reporter contact data. AI will analyze and map your columns.</p>
+            <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+            <button id="csv-choose-btn" class="csv-upload-btn">Choose CSV File</button>
+            <span id="csv-filename" class="csv-filename"></span>
+            <button id="csv-analyze-btn" class="csv-analyze-btn" disabled>Analyze File</button>
+        </section>
+
+        <section id="import-loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Analyzing CSV with AI...</p>
+        </section>
+
+        <section id="import-review" class="import-section hidden">
+            <div class="import-summary" id="import-summary"></div>
+            <h3 class="import-section-label">Column Mapping</h3>
+            <div id="import-mappings" class="import-mappings"></div>
+            <div id="import-issues" class="import-issues"></div>
+            <div id="import-duplicates" class="import-duplicates"></div>
+            <h3 class="import-section-label">Sample Data</h3>
+            <div class="import-table-wrap">
+                <table id="import-table" class="import-table"></table>
+            </div>
+            <div class="import-actions">
+                <label class="import-skip-label">
+                    <input type="checkbox" id="import-skip-dupes" checked>
+                    Skip existing reporters
+                </label>
+                <div class="import-action-btns">
+                    <button id="import-cancel-btn" class="import-cancel-btn">Cancel</button>
+                    <button id="import-confirm-btn" class="import-confirm-btn">Import Reporters</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="import-results" class="import-section hidden">
+            <h2 class="import-title">Import Complete</h2>
+            <div id="import-result-stats" class="import-result-stats"></div>
+            <button id="import-done-btn" class="import-done-btn">Done</button>
+        </section>
     </main>
 
-    <script src="/app.js?v=9"></script>
+    <script src="/app.js?v=10"></script>
 </body>
 </html>

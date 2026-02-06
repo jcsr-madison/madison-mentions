@@ -24,8 +24,31 @@ const outletChangeNote = document.getElementById('outlet-change-note');
 const articleCount = document.getElementById('article-count');
 const articlesList = document.getElementById('articles-list');
 
+// Import elements
+const importNavBtn = document.getElementById('import-nav-btn');
+const importUploadSection = document.getElementById('import-upload');
+const importLoadingSection = document.getElementById('import-loading');
+const importReviewSection = document.getElementById('import-review');
+const importResultsSection = document.getElementById('import-results');
+const csvFileInput = document.getElementById('csv-file-input');
+const csvChooseBtn = document.getElementById('csv-choose-btn');
+const csvFilename = document.getElementById('csv-filename');
+const csvAnalyzeBtn = document.getElementById('csv-analyze-btn');
+const importSummary = document.getElementById('import-summary');
+const importMappings = document.getElementById('import-mappings');
+const importIssues = document.getElementById('import-issues');
+const importDuplicates = document.getElementById('import-duplicates');
+const importTable = document.getElementById('import-table');
+const importSkipDupes = document.getElementById('import-skip-dupes');
+const importCancelBtn = document.getElementById('import-cancel-btn');
+const importConfirmBtn = document.getElementById('import-confirm-btn');
+const importResultStats = document.getElementById('import-result-stats');
+const importDoneBtn = document.getElementById('import-done-btn');
+
 // State
 let currentReporterName = null;
+let importSessionId = null;
+let importAnalysis = null;
 
 // State management
 function showSection(section) {
@@ -34,6 +57,10 @@ function showSection(section) {
     resultsSection.classList.add('hidden');
     noResultsSection.classList.add('hidden');
     refreshBtn.classList.add('hidden');
+    importUploadSection.classList.add('hidden');
+    importLoadingSection.classList.add('hidden');
+    importReviewSection.classList.add('hidden');
+    importResultsSection.classList.add('hidden');
 
     if (section) {
         section.classList.remove('hidden');
@@ -297,6 +324,210 @@ form.addEventListener('submit', async (e) => {
         setLoading(false);
     }
 });
+
+// ==========================================================================
+// CSV IMPORT FLOW
+// ==========================================================================
+
+// Import nav button → show upload section
+importNavBtn.addEventListener('click', () => {
+    showSection(importUploadSection);
+});
+
+// Choose file button → trigger hidden file input
+csvChooseBtn.addEventListener('click', () => {
+    csvFileInput.click();
+});
+
+// File selected → update display, enable analyze
+csvFileInput.addEventListener('change', () => {
+    const file = csvFileInput.files[0];
+    if (file) {
+        csvFilename.textContent = file.name;
+        csvAnalyzeBtn.disabled = false;
+    } else {
+        csvFilename.textContent = '';
+        csvAnalyzeBtn.disabled = true;
+    }
+});
+
+// Analyze button → upload and get AI analysis
+csvAnalyzeBtn.addEventListener('click', async () => {
+    const file = csvFileInput.files[0];
+    if (!file) return;
+
+    csvAnalyzeBtn.disabled = true;
+    showSection(importLoadingSection);
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/import/analyze', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.detail || `Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        importSessionId = result.session_id;
+        importAnalysis = result;
+        renderImportReview(result);
+        showSection(importReviewSection);
+    } catch (err) {
+        showError(err.message || 'Failed to analyze CSV file.');
+    }
+});
+
+// Render import review screen
+function renderImportReview(result) {
+    const analysis = result.analysis;
+    const confidence = analysis.confidence || 'medium';
+
+    // Summary
+    importSummary.innerHTML = `
+        <div><strong>${escapeHtml(result.filename)}</strong> &mdash; ${result.total_rows} rows, ${result.headers.length} columns</div>
+        <div>AI Confidence: <span class="import-confidence ${confidence}">${confidence}</span></div>
+    `;
+
+    // Column mapping dropdowns
+    const fields = ['name', 'outlet', 'bio', 'twitter', 'linkedin'];
+    const mapping = analysis.column_mapping || {};
+    importMappings.innerHTML = fields.map(field => {
+        const options = result.headers.map(h =>
+            `<option value="${escapeHtml(h)}" ${mapping[field] === h ? 'selected' : ''}>${escapeHtml(h)}</option>`
+        ).join('');
+        return `
+            <div class="mapping-row">
+                <span class="mapping-label">${field}</span>
+                <select class="mapping-select" data-field="${field}">
+                    <option value="">-- Not mapped --</option>
+                    ${options}
+                </select>
+            </div>
+        `;
+    }).join('');
+
+    // Issues + normalizations
+    const items = [
+        ...(analysis.issues || []),
+        ...(analysis.normalizations || []),
+    ];
+    if (items.length > 0) {
+        importIssues.innerHTML = '<ul>' + items.map(i => `<li>${escapeHtml(i)}</li>`).join('') + '</ul>';
+    } else {
+        importIssues.innerHTML = '';
+    }
+
+    // Duplicates
+    if (result.duplicates && result.duplicates.length > 0) {
+        importDuplicates.innerHTML = '<ul>' +
+            result.duplicates.map(d => `<li>${escapeHtml(d)} — already exists</li>`).join('') +
+            '</ul>';
+    } else {
+        importDuplicates.innerHTML = '';
+    }
+
+    // Sample data table
+    const sampleRows = result.sample_rows || [];
+    if (sampleRows.length > 0) {
+        const headerRow = result.headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+        const bodyRows = sampleRows.map(row =>
+            '<tr>' + result.headers.map(h => `<td>${escapeHtml(row[h] || '')}</td>`).join('') + '</tr>'
+        ).join('');
+        importTable.innerHTML = `<thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody>`;
+    } else {
+        importTable.innerHTML = '';
+    }
+}
+
+// Cancel → reset and go back
+importCancelBtn.addEventListener('click', () => {
+    resetImportState();
+    showSection(null);
+});
+
+// Confirm → apply mapping and import
+importConfirmBtn.addEventListener('click', async () => {
+    if (!importSessionId) return;
+
+    importConfirmBtn.disabled = true;
+
+    // Gather mapping from dropdowns
+    const columnMapping = {};
+    importMappings.querySelectorAll('.mapping-select').forEach(select => {
+        const field = select.dataset.field;
+        const value = select.value;
+        columnMapping[field] = value || null;
+    });
+
+    if (!columnMapping.name) {
+        showError('Name column mapping is required.');
+        importConfirmBtn.disabled = false;
+        return;
+    }
+
+    showSection(importLoadingSection);
+
+    try {
+        const response = await fetch('/api/import/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: importSessionId,
+                column_mapping: columnMapping,
+                skip_duplicates: importSkipDupes.checked,
+            }),
+        });
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.detail || `Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        renderImportResults(result);
+        showSection(importResultsSection);
+    } catch (err) {
+        showError(err.message || 'Failed to import reporters.');
+    } finally {
+        importConfirmBtn.disabled = false;
+    }
+});
+
+// Render import results
+function renderImportResults(result) {
+    const stats = [
+        { label: 'Imported', count: result.imported, cls: '' },
+        { label: 'Skipped', count: result.skipped, cls: '' },
+        { label: 'Errors', count: result.errors, cls: result.errors > 0 ? 'result-errors' : '' },
+    ];
+
+    importResultStats.innerHTML = stats.map(s => `
+        <div class="result-stat ${s.cls}">
+            <span class="result-count">${s.count}</span>
+            <span class="result-label">${s.label}</span>
+        </div>
+    `).join('');
+}
+
+// Done → reset and return
+importDoneBtn.addEventListener('click', () => {
+    resetImportState();
+    showSection(null);
+});
+
+function resetImportState() {
+    importSessionId = null;
+    importAnalysis = null;
+    csvFileInput.value = '';
+    csvFilename.textContent = '';
+    csvAnalyzeBtn.disabled = true;
+}
 
 // Focus input on load
 input.focus();
