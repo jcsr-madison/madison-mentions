@@ -1,5 +1,6 @@
 // Madison Mentions - Frontend JavaScript
 
+const searchSection = document.getElementById('search-section');
 const form = document.getElementById('search-form');
 const input = document.getElementById('reporter-name');
 const searchBtn = document.getElementById('search-btn');
@@ -50,7 +51,14 @@ let currentReporterName = null;
 let importSessionId = null;
 let importAnalysis = null;
 
-// State management
+// Track which sections are part of the import flow
+const importSections = new Set([
+    importUploadSection,
+    importLoadingSection,
+    importReviewSection,
+    importResultsSection,
+]);
+
 function showSection(section) {
     loadingSection.classList.add('hidden');
     errorSection.classList.add('hidden');
@@ -65,6 +73,10 @@ function showSection(section) {
     if (section) {
         section.classList.remove('hidden');
     }
+
+    // Hide search section during import flow, show it otherwise
+    const isImportScreen = section && importSections.has(section);
+    searchSection.classList.toggle('hidden', isImportScreen);
 }
 
 function setLoading(isLoading) {
@@ -379,7 +391,10 @@ csvAnalyzeBtn.addEventListener('click', async () => {
         renderImportReview(result);
         showSection(importReviewSection);
     } catch (err) {
-        showError(err.message || 'Failed to analyze CSV file.');
+        // Return to upload section so the user can retry
+        showSection(importUploadSection);
+        csvAnalyzeBtn.disabled = false;
+        csvFilename.textContent = `Error: ${err.message || 'Failed to analyze CSV file.'}`;
     }
 });
 
@@ -466,7 +481,7 @@ importConfirmBtn.addEventListener('click', async () => {
     });
 
     if (!columnMapping.name) {
-        showError('Name column mapping is required.');
+        alert('Name column mapping is required.');
         importConfirmBtn.disabled = false;
         return;
     }
@@ -493,7 +508,9 @@ importConfirmBtn.addEventListener('click', async () => {
         renderImportResults(result);
         showSection(importResultsSection);
     } catch (err) {
-        showError(err.message || 'Failed to import reporters.');
+        // Return to review section so the user can retry
+        showSection(importReviewSection);
+        alert(err.message || 'Failed to import reporters.');
     } finally {
         importConfirmBtn.disabled = false;
     }

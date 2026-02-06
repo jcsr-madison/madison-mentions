@@ -132,18 +132,25 @@ def build_dossier_from_db(reporter: dict) -> ReporterDossier:
         except (ValueError, TypeError):
             pass
 
-    # Build article models
-    article_models = [
-        Article(
+    # Build article models (skip articles with missing dates)
+    article_models = []
+    for a in articles_for_analysis:
+        article_date = a.get("date")
+        if not article_date:
+            continue
+        if not isinstance(article_date, date):
+            try:
+                article_date = date.fromisoformat(article_date)
+            except (ValueError, TypeError):
+                continue
+        article_models.append(Article(
             headline=a["headline"],
             outlet=a["outlet"],
-            date=a["date"] if isinstance(a["date"], date) else date.fromisoformat(a["date"]),
+            date=article_date,
             url=a["url"],
             summary=a.get("summary"),
             topics=a.get("topics", []),
-        )
-        for a in articles_for_analysis
-    ]
+        ))
     article_models.sort(key=lambda a: a.date, reverse=True)
 
     return ReporterDossier(

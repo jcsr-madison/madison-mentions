@@ -2,6 +2,7 @@
 
 import csv
 import io
+import time
 import uuid
 from typing import Dict, List, Optional
 
@@ -19,6 +20,24 @@ _pending_imports: Dict[str, dict] = {}
 
 MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB
 MAX_ROWS = 5000
+SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
+MAX_PENDING_SESSIONS = 20
+
+
+def _evict_stale_sessions():
+    """Remove expired sessions to prevent memory leaks."""
+    now = time.time()
+    expired = [
+        sid for sid, data in _pending_imports.items()
+        if now - data.get("created_at", 0) > SESSION_TTL_SECONDS
+    ]
+    for sid in expired:
+        del _pending_imports[sid]
+    # Hard cap: if still over limit, remove oldest
+    if len(_pending_imports) > MAX_PENDING_SESSIONS:
+        by_age = sorted(_pending_imports.items(), key=lambda x: x[1].get("created_at", 0))
+        for sid, _ in by_age[:len(_pending_imports) - MAX_PENDING_SESSIONS]:
+            del _pending_imports[sid]
 
 
 class ConfirmRequest(BaseModel):
@@ -92,13 +111,15 @@ async def analyze_csv(file: UploadFile):
                 if existing:
                     duplicates.append(name_val)
 
-    # Store pending import
+    # Store pending import (evict stale sessions first)
+    _evict_stale_sessions()
     session_id = str(uuid.uuid4())
     _pending_imports[session_id] = {
         "rows": rows,
         "headers": list(headers),
         "analysis": analysis,
         "filename": file.filename,
+        "created_at": time.time(),
     }
 
     return {
