@@ -2,6 +2,7 @@
 
 import csv
 import io
+import logging
 import time
 import uuid
 from typing import Dict, List, Optional
@@ -12,6 +13,8 @@ from pydantic import BaseModel
 from ..db.reporter_store import get_reporter, upsert_reporter
 from ..services.csv_analyzer import analyze_csv_with_claude
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["import"])
 
@@ -158,15 +161,15 @@ async def confirm_import(request: ConfirmRequest):
     errors = 0
 
     for row in pending["rows"]:
+        row_name = (row.get(name_col) or "").strip()
         try:
-            name = (row.get(name_col) or "").strip()
-            if not name:
+            if not row_name:
                 skipped += 1
                 continue
 
             # Skip duplicates if requested
             if request.skip_duplicates:
-                existing = get_reporter(name)
+                existing = get_reporter(row_name)
                 if existing:
                     skipped += 1
                     continue
@@ -197,7 +200,7 @@ async def confirm_import(request: ConfirmRequest):
                         social_links["linkedin_url"] = f"https://linkedin.com/in/{linkedin_val}"
 
             upsert_reporter(
-                name=name,
+                name=row_name,
                 social_links=social_links if social_links else None,
                 current_outlet=outlet or None,
                 bio=bio or None,
@@ -206,6 +209,7 @@ async def confirm_import(request: ConfirmRequest):
             imported += 1
 
         except Exception:
+            logger.exception("Failed to import reporter: %s", row_name)
             errors += 1
             continue
 
