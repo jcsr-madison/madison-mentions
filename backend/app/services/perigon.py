@@ -338,6 +338,37 @@ def clean_outlet_name(domain: str) -> str:
         # Legal/Business news
         "bloomberglaw.com": "Bloomberg Law",
         "law.com": "Law.com",
+        "law360.com": "Law360",
+
+        # Accounting/Finance trades
+        "accountingtoday.com": "Accounting Today",
+        "journalofaccountancy.com": "Journal of Accountancy",
+        "cpapracticeadvisor.com": "CPA Practice Advisor",
+        "cfodive.com": "CFO Dive",
+        "cfo.com": "CFO Magazine",
+        "complianceweek.com": "Compliance Week",
+
+        # Professional services / consulting
+        "consultancy.uk": "Consultancy.uk",
+        "consulting.us": "Consulting.us",
+        "hbr.org": "Harvard Business Review",
+        "mckinsey.com": "McKinsey",
+
+        # Regional business journals
+        "bizjournals.com": "The Business Journals",
+
+        # Industry Dive network
+        "hrdive.com": "HR Dive",
+        "supplychaindive.com": "Supply Chain Dive",
+        "ciodive.com": "CIO Dive",
+        "healthcaredive.com": "Healthcare Dive",
+        "marketingdive.com": "Marketing Dive",
+        "retaildive.com": "Retail Dive",
+        "constructiondive.com": "Construction Dive",
+        "bankingdive.com": "Banking Dive",
+        "biopharmadive.com": "BioPharma Dive",
+        "educationdive.com": "Education Dive",
+        "utilitydive.com": "Utility Dive",
 
         # Other
         "rp.pl": "Rzeczpospolita",
@@ -346,6 +377,11 @@ def clean_outlet_name(domain: str) -> str:
 
     if domain in domain_map:
         return domain_map[domain]
+
+    # Handle bizjournals subdomains (e.g., dallas.bizjournals.com → Dallas Business Journal)
+    if domain.endswith("bizjournals.com") and domain != "bizjournals.com":
+        city = domain.split(".")[0].title()
+        return f"{city} Business Journal"
 
     # Try partial matching for subdomains
     for known_domain, name in domain_map.items():
