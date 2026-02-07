@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=11">
+    <link rel="stylesheet" href="/styles.css?v=12">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230d1321' width='100' height='100' rx='12'/><text x='50' y='72' font-size='60' font-family='Georgia,serif' font-weight='400' fill='%23d4a84b' text-anchor='middle'>M</text></svg>">
 </head>
 <body>
@@ -30,6 +30,10 @@
                 >
                 <button type="submit" id="search-btn">Search</button>
             </form>
+            <label class="relevance-filter-label">
+                <input type="checkbox" id="relevance-filter" checked>
+                Professional services reporters only
+            </label>
         </section>
 
         <section id="loading" class="loading hidden">
@@ -39,6 +43,12 @@
 
         <section id="error" class="error hidden">
             <p id="error-message"></p>
+        </section>
+
+        <section id="relevance-alert" class="relevance-alert hidden">
+            <p class="relevance-message">This reporter doesn't typically cover professional services.</p>
+            <p id="relevance-rationale" class="relevance-rationale"></p>
+            <button id="show-dossier-btn" class="show-dossier-btn">Show Dossier Anyway</button>
         </section>
 
         <section id="results" class="results hidden">
@@ -130,6 +140,6 @@
         </section>
     </main>
 
-    <script src="/app.js?v=11"></script>
+    <script src="/app.js?v=12"></script>
 </body>
 </html>

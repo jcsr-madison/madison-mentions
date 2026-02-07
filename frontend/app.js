@@ -10,6 +10,10 @@ const errorMessage = document.getElementById('error-message');
 const resultsSection = document.getElementById('results');
 const noResultsSection = document.getElementById('no-results');
 const loadingMessage = document.getElementById('loading-message');
+const relevanceFilter = document.getElementById('relevance-filter');
+const relevanceAlert = document.getElementById('relevance-alert');
+const relevanceRationale = document.getElementById('relevance-rationale');
+const showDossierBtn = document.getElementById('show-dossier-btn');
 
 // Results elements
 const reporterTitle = document.getElementById('reporter-title');
@@ -53,6 +57,8 @@ const importDoneBtn = document.getElementById('import-done-btn');
 let currentReporterName = null;
 let importSessionId = null;
 let importAnalysis = null;
+let pendingDossier = null;
+let bypassRelevanceFilter = false;
 
 // Track which sections are part of the import flow
 const importSections = new Set([
@@ -68,6 +74,7 @@ function showSection(section) {
     resultsSection.classList.add('hidden');
     noResultsSection.classList.add('hidden');
     refreshBtn.classList.add('hidden');
+    relevanceAlert.classList.add('hidden');
     importUploadSection.classList.add('hidden');
     importLoadingSection.classList.add('hidden');
     importReviewSection.classList.add('hidden');
@@ -132,6 +139,22 @@ function renderDossier(dossier) {
         showSection(noResultsSection);
         return;
     }
+
+    // Relevance gate: if filter is on and reporter is explicitly not relevant, block
+    if (
+        relevanceFilter.checked &&
+        !bypassRelevanceFilter &&
+        dossier.pro_services_relevant === false
+    ) {
+        pendingDossier = dossier;
+        relevanceRationale.textContent = dossier.relevance_rationale || '';
+        showSection(relevanceAlert);
+        return;
+    }
+
+    // Reset bypass flag after use
+    bypassRelevanceFilter = false;
+    pendingDossier = null;
 
     // Header
     reporterTitle.textContent = dossier.reporter_name;
@@ -315,6 +338,21 @@ refreshBtn.addEventListener('click', async () => {
         showError(err.message || 'Failed to refresh reporter data. Please try again.');
     } finally {
         setLoading(false);
+    }
+});
+
+// Show Dossier Anyway button
+showDossierBtn.addEventListener('click', () => {
+    if (pendingDossier) {
+        bypassRelevanceFilter = true;
+        renderDossier(pendingDossier);
+    }
+});
+
+// Relevance filter checkbox
+relevanceFilter.addEventListener('change', () => {
+    if (!relevanceFilter.checked && pendingDossier) {
+        renderDossier(pendingDossier);
     }
 });
 

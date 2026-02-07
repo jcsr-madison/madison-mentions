@@ -50,6 +50,9 @@ def init_db():
             reporter_bio TEXT,
             social_links_json TEXT,
             source TEXT DEFAULT 'perigon',
+            pro_services_relevant BOOLEAN DEFAULT NULL,
+            relevance_rationale TEXT,
+            relevance_evaluated_at TIMESTAMP,
             last_updated TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -58,6 +61,22 @@ def init_db():
     # Migration: add source column to existing databases
     try:
         cursor.execute("ALTER TABLE reporters ADD COLUMN source TEXT DEFAULT 'perigon'")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    # Migration: add relevance classification columns
+    try:
+        cursor.execute("ALTER TABLE reporters ADD COLUMN pro_services_relevant BOOLEAN DEFAULT NULL")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    try:
+        cursor.execute("ALTER TABLE reporters ADD COLUMN relevance_rationale TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    try:
+        cursor.execute("ALTER TABLE reporters ADD COLUMN relevance_evaluated_at TIMESTAMP")
     except sqlite3.OperationalError:
         pass  # Column already exists
 

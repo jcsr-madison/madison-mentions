@@ -15,11 +15,14 @@ from ..db.reporter_store import (
     upsert_reporter,
     insert_articles,
     update_reporter_profile,
+    update_relevance,
+    get_relevance,
 )
 from ..models.schemas import Article, ReporterDossier, SocialLinks
 from ..services.perigon import search_and_get_journalist, fetch_articles_since
 from ..services.summarizer import summarize_headlines, generate_reporter_profile
 from ..services.analyzer import detect_outlet_change
+from ..services.relevance_classifier import classify_reporter
 
 
 router = APIRouter(prefix="/api", tags=["reporters"])
@@ -163,7 +166,27 @@ def build_dossier_from_db(reporter: dict) -> ReporterDossier:
         outlet_change_detected=change_detected,
         outlet_change_note=change_note,
         last_updated=last_updated,
+        pro_services_relevant=reporter.get("pro_services_relevant"),
+        relevance_rationale=reporter.get("relevance_rationale"),
     )
+
+
+def _classify_if_needed(reporter_id: int, reporter_name: str, articles: list) -> None:
+    """Run relevance classification if not already done."""
+    existing = get_relevance(reporter_id)
+    if existing is not None:
+        return  # Already classified — never re-evaluate
+
+    if not articles:
+        return  # No articles to classify on
+
+    outlets = set(a.get("outlet", "") for a in articles if a.get("outlet"))
+    summaries = [
+        a.get("summary") or a.get("headline", "")
+        for a in articles
+    ]
+    relevant, rationale = classify_reporter(reporter_name, outlets, summaries)
+    update_relevance(reporter_id, relevant, rationale)
 
 
 @router.get("/reporter/{name}", response_model=ReporterDossier)
@@ -188,6 +211,14 @@ async def get_reporter_dossier(name: str, refresh: bool = False):
     if reporter and is_reporter_fresh(reporter) and not refresh:
         db_articles = get_reporter_articles(reporter["id"])
         if db_articles:
+            # Classify if not yet evaluated
+            if reporter.get("pro_services_relevant") is None:
+                articles_for_classify = [
+                    {"outlet": a["outlet"], "summary": a.get("summary"), "headline": a["headline"]}
+                    for a in db_articles
+                ]
+                _classify_if_needed(reporter["id"], name, articles_for_classify)
+                reporter = get_reporter(name)  # Re-fetch with classification
             return build_dossier_from_db(reporter)
 
     # --- Tier 3: Stale or forced refresh (incremental) ---
@@ -238,6 +269,10 @@ async def get_reporter_dossier(name: str, refresh: bool = False):
             name, all_articles_dicts, social_title
         )
         update_reporter_profile(reporter_id, current_outlet, reporter_bio)
+
+        # Classify if not yet evaluated
+        if reporter.get("pro_services_relevant") is None:
+            _classify_if_needed(reporter_id, name, all_articles_dicts)
 
         # Re-fetch the updated reporter record
         reporter = get_reporter(name)
@@ -306,6 +341,9 @@ async def get_reporter_dossier(name: str, refresh: bool = False):
         source="perigon",
     )
     insert_articles(reporter_id, articles)
+
+    # Classify relevance for new reporters
+    _classify_if_needed(reporter_id, name, articles)
 
     # Return from DB for consistency
     reporter = get_reporter(name)

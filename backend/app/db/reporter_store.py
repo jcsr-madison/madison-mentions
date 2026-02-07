@@ -171,6 +171,38 @@ def update_reporter_profile(
     conn.close()
 
 
+def update_relevance(reporter_id: int, relevant: bool, rationale: str) -> None:
+    """Store relevance classification. Does NOT touch last_updated."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    now = datetime.now().isoformat()
+    cursor.execute(
+        """
+        UPDATE reporters
+        SET pro_services_relevant = ?, relevance_rationale = ?, relevance_evaluated_at = ?
+        WHERE id = ?
+        """,
+        (relevant, rationale, now, reporter_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_relevance(reporter_id: int) -> Optional[Dict]:
+    """Return relevance classification for a reporter, or None if not yet evaluated."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT pro_services_relevant, relevance_rationale, relevance_evaluated_at FROM reporters WHERE id = ?",
+        (reporter_id,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if row and row["pro_services_relevant"] is not None:
+        return dict(row)
+    return None
+
+
 def update_reporter_timestamp(reporter_id: int) -> None:
     """Touch last_updated without changing other fields."""
     conn = get_connection()

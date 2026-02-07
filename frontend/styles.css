@@ -137,6 +137,65 @@ main {
 }
 
 /* ==========================================================================
+   RELEVANCE FILTER
+   ========================================================================== */
+
+.relevance-filter-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--gray-300);
+    margin-top: 12px;
+    cursor: pointer;
+}
+
+.relevance-filter-label input[type="checkbox"] {
+    accent-color: var(--gold);
+}
+
+/* ==========================================================================
+   RELEVANCE ALERT
+   ========================================================================== */
+
+.relevance-alert {
+    background: var(--navy-800);
+    text-align: center;
+    padding: 40px 32px;
+}
+
+.relevance-message {
+    font-size: 18px;
+    color: var(--gray-200);
+    margin-bottom: 8px;
+}
+
+.relevance-rationale {
+    font-size: 15px;
+    color: var(--gray-400);
+    font-style: italic;
+    margin: 8px 0;
+}
+
+.show-dossier-btn {
+    padding: 14px 28px;
+    font-family: inherit;
+    font-size: 15px;
+    background: transparent;
+    color: var(--gray-300);
+    border: 1px solid var(--navy-600);
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.show-dossier-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+/* ==========================================================================
    LOADING
    ========================================================================== */
 

@@ -36,3 +36,5 @@ class ReporterDossier(BaseModel):
     outlet_change_detected: bool
     outlet_change_note: Optional[str] = None
     last_updated: Optional[datetime] = None
+    pro_services_relevant: Optional[bool] = None
+    relevance_rationale: Optional[str] = None
