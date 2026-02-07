@@ -468,6 +468,15 @@ main {
     animation: fadeIn 0.3s ease;
 }
 
+.import-inline-error {
+    background: var(--error-light);
+    border-left: 4px solid var(--error);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: var(--gray-100);
+}
+
 .import-title {
     font-family: 'DM Serif Display', Georgia, serif;
     font-size: 28px;
@@ -704,9 +713,9 @@ main {
 
 .import-cancel-btn,
 .import-done-btn {
-    padding: 10px 24px;
+    padding: 14px 28px;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 15px;
     background: transparent;
     color: var(--gray-300);
     border: 1px solid var(--navy-600);
@@ -722,9 +731,9 @@ main {
 }
 
 .import-confirm-btn {
-    padding: 10px 24px;
+    padding: 14px 28px;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
     background: var(--gold);
     color: var(--navy-900);

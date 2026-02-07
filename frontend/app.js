@@ -31,6 +31,8 @@ const importUploadSection = document.getElementById('import-upload');
 const importLoadingSection = document.getElementById('import-loading');
 const importReviewSection = document.getElementById('import-review');
 const importResultsSection = document.getElementById('import-results');
+const importUploadError = document.getElementById('import-upload-error');
+const importReviewError = document.getElementById('import-review-error');
 const csvFileInput = document.getElementById('csv-file-input');
 const csvChooseBtn = document.getElementById('csv-choose-btn');
 const csvFilename = document.getElementById('csv-filename');
@@ -369,6 +371,7 @@ csvAnalyzeBtn.addEventListener('click', async () => {
     if (!file) return;
 
     csvAnalyzeBtn.disabled = true;
+    importUploadError.classList.add('hidden');
     showSection(importLoadingSection);
 
     try {
@@ -394,7 +397,8 @@ csvAnalyzeBtn.addEventListener('click', async () => {
         // Return to upload section so the user can retry
         showSection(importUploadSection);
         csvAnalyzeBtn.disabled = false;
-        csvFilename.textContent = `Error: ${err.message || 'Failed to analyze CSV file.'}`;
+        importUploadError.textContent = err.message || 'Failed to analyze CSV file.';
+        importUploadError.classList.remove('hidden');
     }
 });
 
@@ -471,6 +475,7 @@ importConfirmBtn.addEventListener('click', async () => {
     if (!importSessionId) return;
 
     importConfirmBtn.disabled = true;
+    importReviewError.classList.add('hidden');
 
     // Gather mapping from dropdowns
     const columnMapping = {};
@@ -481,7 +486,8 @@ importConfirmBtn.addEventListener('click', async () => {
     });
 
     if (!columnMapping.name) {
-        alert('Name column mapping is required.');
+        importReviewError.textContent = 'Name column mapping is required.';
+        importReviewError.classList.remove('hidden');
         importConfirmBtn.disabled = false;
         return;
     }
@@ -510,7 +516,8 @@ importConfirmBtn.addEventListener('click', async () => {
     } catch (err) {
         // Return to review section so the user can retry
         showSection(importReviewSection);
-        alert(err.message || 'Failed to import reporters.');
+        importReviewError.textContent = err.message || 'Failed to import reporters.';
+        importReviewError.classList.remove('hidden');
     } finally {
         importConfirmBtn.disabled = false;
     }
@@ -544,6 +551,8 @@ function resetImportState() {
     csvFileInput.value = '';
     csvFilename.textContent = '';
     csvAnalyzeBtn.disabled = true;
+    importUploadError.classList.add('hidden');
+    importReviewError.classList.add('hidden');
 }
 
 // Focus input on load
