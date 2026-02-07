@@ -459,7 +459,8 @@ main {
     transition: border-color 0.2s, color 0.2s;
 }
 
-.import-nav-btn:hover {
+.import-nav-btn:hover,
+.import-nav-btn.active {
     border-color: var(--gold);
     color: var(--gold);
 }
@@ -711,6 +712,7 @@ main {
     gap: 12px;
 }
 
+.import-back-btn,
 .import-cancel-btn,
 .import-done-btn {
     padding: 14px 28px;
@@ -724,6 +726,7 @@ main {
     transition: border-color 0.2s, color 0.2s;
 }
 
+.import-back-btn:hover,
 .import-cancel-btn:hover,
 .import-done-btn:hover {
     border-color: var(--gold);
@@ -754,6 +757,7 @@ main {
 
 .import-result-stats {
     display: flex;
+    flex-wrap: wrap;
     gap: 32px;
     margin: 24px 0;
 }
@@ -778,6 +782,13 @@ main {
 
 .result-stat.result-errors .result-count {
     color: var(--error);
+}
+
+.import-total-context {
+    width: 100%;
+    font-size: 14px;
+    color: var(--gray-400);
+    margin-top: 8px;
 }
 
 /* ==========================================================================
@@ -820,5 +831,39 @@ main {
 
     .article-meta {
         order: -1;
+    }
+
+    /* Import flow mobile */
+    .mapping-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .mapping-select {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .import-actions {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .import-action-btns {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .import-action-btns button {
+        width: 100%;
+    }
+
+    .import-result-stats {
+        gap: 16px;
+    }
+
+    .import-table td {
+        max-width: 120px;
     }
 }

@@ -43,6 +43,7 @@ const importIssues = document.getElementById('import-issues');
 const importDuplicates = document.getElementById('import-duplicates');
 const importTable = document.getElementById('import-table');
 const importSkipDupes = document.getElementById('import-skip-dupes');
+const importBackBtn = document.getElementById('import-back-btn');
 const importCancelBtn = document.getElementById('import-cancel-btn');
 const importConfirmBtn = document.getElementById('import-confirm-btn');
 const importResultStats = document.getElementById('import-result-stats');
@@ -79,6 +80,7 @@ function showSection(section) {
     // Hide search section during import flow, show it otherwise
     const isImportScreen = section && importSections.has(section);
     searchSection.classList.toggle('hidden', isImportScreen);
+    importNavBtn.classList.toggle('active', isImportScreen);
 }
 
 function setLoading(isLoading) {
@@ -464,6 +466,12 @@ function renderImportReview(result) {
     }
 }
 
+// Back → return to upload screen with file still selected
+importBackBtn.addEventListener('click', () => {
+    importReviewError.classList.add('hidden');
+    showSection(importUploadSection);
+});
+
 // Cancel → reset and go back
 importCancelBtn.addEventListener('click', () => {
     resetImportState();
@@ -475,6 +483,7 @@ importConfirmBtn.addEventListener('click', async () => {
     if (!importSessionId) return;
 
     importConfirmBtn.disabled = true;
+    importConfirmBtn.textContent = 'Importing...';
     importReviewError.classList.add('hidden');
 
     // Gather mapping from dropdowns
@@ -489,6 +498,7 @@ importConfirmBtn.addEventListener('click', async () => {
         importReviewError.textContent = 'Name column mapping is required.';
         importReviewError.classList.remove('hidden');
         importConfirmBtn.disabled = false;
+        importConfirmBtn.textContent = 'Import Reporters';
         return;
     }
 
@@ -511,7 +521,7 @@ importConfirmBtn.addEventListener('click', async () => {
         }
 
         const result = await response.json();
-        renderImportResults(result);
+        renderImportResults(result, importAnalysis?.total_rows);
         showSection(importResultsSection);
     } catch (err) {
         // Return to review section so the user can retry
@@ -520,23 +530,26 @@ importConfirmBtn.addEventListener('click', async () => {
         importReviewError.classList.remove('hidden');
     } finally {
         importConfirmBtn.disabled = false;
+        importConfirmBtn.textContent = 'Import Reporters';
     }
 });
 
 // Render import results
-function renderImportResults(result) {
+function renderImportResults(result, totalRows) {
     const stats = [
         { label: 'Imported', count: result.imported, cls: '' },
         { label: 'Skipped', count: result.skipped, cls: '' },
         { label: 'Errors', count: result.errors, cls: result.errors > 0 ? 'result-errors' : '' },
     ];
 
+    const totalLine = totalRows ? `<p class="import-total-context">out of ${totalRows} total rows</p>` : '';
+
     importResultStats.innerHTML = stats.map(s => `
         <div class="result-stat ${s.cls}">
             <span class="result-count">${s.count}</span>
             <span class="result-label">${s.label}</span>
         </div>
-    `).join('');
+    `).join('') + totalLine;
 }
 
 // Done → reset and return
